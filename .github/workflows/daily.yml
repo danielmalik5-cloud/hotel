@@ -18,13 +18,28 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           MAX_CALLS: "16"
-          TURNS: "12"
+          TURNS: "9"
         run: python3 engine.py
+
+      - name: Install picture library
+        run: pip install pillow
+
+      - name: Make today's video
+        env:
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+        run: python3 video.py
+
+      - name: Keep the video for download
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-video
+          path: videos/*.mp4
+          retention-days: 14
 
       - name: Save the transcript
         run: |
           git config user.name "token-hotel-bot"
           git config user.email "bot@users.noreply.github.com"
-          git add transcripts
+          git add transcripts assets
           git commit -m "New hotel episode" || echo "Nothing new to save"
           git push
