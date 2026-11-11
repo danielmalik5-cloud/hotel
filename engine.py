@@ -9,7 +9,7 @@ Environment variables:
   ANTHROPIC_API_KEY  - your key (set as a GitHub secret, never in this file)
   MOCK=1             - no API calls, canned lines (for testing)
   MAX_CALLS          - hard cap on API calls per run (default 16)
-  TURNS              - number of lines in the scene (default 12)
+  TURNS              - number of lines in the scene (default 9)
   MODEL              - model id (default claude-haiku-5-5)
 """
 import json
@@ -25,12 +25,12 @@ ROOT = Path(__file__).parent
 API_URL = "https://api.anthropic.com/v1/messages"
 MODEL = os.environ.get("MODEL", "claude-haiku-5-5")
 MAX_CALLS = int(os.environ.get("MAX_CALLS", "16"))
-TURNS = int(os.environ.get("TURNS", "12"))
+TURNS = int(os.environ.get("TURNS", "9"))
 MOCK = os.environ.get("MOCK") == "1"
 
 RULES = (
     "You are an AI agent playing a character in a comedy scene set in a hotel. "
-    "Reply with ONLY your next spoken line: one or two short sentences, at most 25 words. "
+    "Reply with ONLY your next spoken line: one or two short sentences, at most 18 words. "
     "No stage directions, no quotation marks, no name prefix. Stay in character. "
     "React to what was just said and move the scene forward. Keep it family friendly "
     "and never mention real people, brands or politics."
