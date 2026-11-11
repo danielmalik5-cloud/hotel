@@ -175,18 +175,21 @@ def wrap(draw, text, font, max_w):
 def overlay(name, role, text):
     ov = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     d = ImageDraw.Draw(ov)
-    d.rectangle((0, 1080, W, 1800), fill=(0, 0, 0, 185))
+    d.rectangle((0, 1500, W, 1870), fill=(0, 0, 0, 190))
     d.rectangle((0, 0, W, 150), fill=(0, 0, 0, 160))
     d.text((W // 2, 75), "THE TOKEN HOTEL", font=ImageFont.truetype(FONT_S, 54), fill=(230, 190, 110), anchor="mm")
-    d.text((60, 1120), name + (f"  ·  {role}" if role else ""),
-           font=ImageFont.truetype(FONT_B, 48), fill=(230, 190, 110))
-    size = 76 if len(text) < 90 else 64
-    font = ImageFont.truetype(FONT_B, size)
-    y = 1210
-    for ln in wrap(d, text, font, W - 120):
+    d.text((60, 1530), name + (f"  \u00b7  {role}" if role else ""),
+           font=ImageFont.truetype(FONT_B, 42), fill=(230, 190, 110))
+    for size in (68, 60, 52, 46):
+        font = ImageFont.truetype(FONT_B, size)
+        lines = wrap(d, text, font, W - 120)
+        if len(lines) * int(size * 1.22) <= 270:
+            break
+    y = 1590
+    for ln in lines:
         d.text((60, y), ln, font=font, fill=(255, 255, 255))
-        y += int(size * 1.25)
-    d.text((W // 2, 1860), "AI-generated characters and voices", font=ImageFont.truetype(FONT_B, 34),
+        y += int(size * 1.22)
+    d.text((W // 2, 1895), "AI-generated characters and voices", font=ImageFont.truetype(FONT_B, 30),
            fill=(200, 200, 200), anchor="mm")
     return ov
 
@@ -351,14 +354,34 @@ def make_assets():
 
 
 def key_out_green(im):
-    """Turn the solid green background into transparency and trim to the character."""
-    im = im.convert("RGB")
-    r, g, b = im.split()
+    """Remove the (greenish, maybe textured or shaded) background around a character.
+
+    The model does not always paint pure green, so this finds greenish pixels that are
+    connected to the picture's border and makes only those transparent. Green parts
+    inside the character (a bow tie, say) stay. Then it trims to the character."""
+    full = im.convert("RGB")
+    w, h = full.size
+    small = full.resize((max(1, w // 2), max(1, h // 2)), Image.BILINEAR)
+    small = small.filter(ImageFilter.MedianFilter(5)).filter(ImageFilter.GaussianBlur(1.5))
+    r, g, b = small.split()
     greenness = ImageChops.subtract(g, ImageChops.lighter(r, b))
-    alpha = greenness.point(lambda v: 0 if v > 60 else (255 if v < 25 else int(255 * (60 - v) / 35)))
+    mask = greenness.point(lambda v: 255 if v >= 8 else 0)
+    sw, sh = mask.size
+    seeds = [(x, 0) for x in range(0, sw, 12)] + [(x, sh - 1) for x in range(0, sw, 12)] + \
+            [(0, y) for y in range(0, sh, 12)] + [(sw - 1, y) for y in range(0, sh, 12)]
+    for pt in seeds:
+        if mask.getpixel(pt) == 255:
+            ImageDraw.floodfill(mask, pt, 128)
+    bg = mask.point(lambda v: 255 if v == 128 else 0)  # 255 = background
+    bg = bg.resize((w, h), Image.BILINEAR).point(lambda v: 255 if v >= 128 else 0)
+    alpha = bg.point(lambda v: 255 - v)
     alpha = alpha.filter(ImageFilter.MinFilter(3)).filter(ImageFilter.GaussianBlur(0.8))
-    g2 = ImageChops.darker(g, ImageChops.lighter(r, b))  # remove green spill on edges
-    out = Image.merge("RGBA", (r, g2, b, alpha))
+    # remove green fringe only along the edge of the character
+    r, g, b = full.split()
+    despilled = Image.merge("RGB", (r, ImageChops.darker(g, ImageChops.lighter(r, b)), b))
+    band = ImageChops.subtract(alpha, alpha.filter(ImageFilter.MinFilter(9)))
+    rgb = Image.composite(despilled, full, band)
+    out = Image.merge("RGBA", (*rgb.split(), alpha))
     box = alpha.point(lambda v: 255 if v > 40 else 0).getbbox()
     return out.crop(box) if box else out
 
@@ -366,16 +389,17 @@ def key_out_green(im):
 def load_assets():
     """Return {'places': {...}, 'robots': {...}} or None if anything is missing."""
     d = ROOT / "assets"
-    places, robots = {}, {}
+    places, places_blur, robots = {}, {}, {}
     for name in PLACES:
         p = d / "places" / f"{name}.png"
         if not p.exists():
             return None
         im = Image.open(p).convert("RGB")
-        scale = max(W / im.width, H / im.height) * 1.2
-        im = im.resize((int(im.width * scale), int(im.height * scale)), Image.LANCZOS)
-        left, top = (im.width - int(W * 1.2)) // 2, (im.height - int(H * 1.2)) // 2
-        places[name] = im.crop((left, top, left + int(W * 1.2), top + int(H * 1.2)))
+        scale = max(W / im.width, H / im.height)
+        im = im.resize((int(im.width * scale + 0.5), int(im.height * scale + 0.5)), Image.LANCZOS)
+        left, top = (im.width - W) // 2, (im.height - H) // 2
+        places[name] = im.crop((left, top, left + W, top + H))
+        places_blur[name] = places[name].filter(ImageFilter.GaussianBlur(5))
     for name in ROBOTS:
         slug = name.replace(" ", "_")
         states = {}
@@ -396,24 +420,50 @@ def load_assets():
             canvas.paste(sp, ((w - sp.width) // 2, HEIGHT - sp.height), sp)
             states[s] = canvas
         robots[name] = states
-    return {"places": places, "robots": robots}
+    return {"places": places, "places_blur": places_blur, "robots": robots}
 
 
 _sprite_cache = {}
+FLOOR_Y = 1430
+SIDE_X = {"L": 300, "R": 780}
+_shadow_cache = {}
+_vignette = None
 
 
-def sprite(assets, name, state, scale, dim):
-    key = (name, state, round(scale, 3), dim)
+def sprite(assets, name, state, scale):
+    key = (name, state, round(scale, 3))
     if key not in _sprite_cache:
         sp = assets["robots"][name][state]
         sp = sp.resize((max(1, int(sp.width * scale)), max(1, int(sp.height * scale))), Image.BILINEAR)
-        if dim < 1.0:
-            rgb = ImageEnhance.Brightness(sp.convert("RGB")).enhance(dim)
-            sp = Image.merge("RGBA", (*rgb.split(), sp.split()[3]))
-        if len(_sprite_cache) > 400:
+        # transparent margin so a rotation around the feet does not clip the body
+        pad_w, pad_h = int(sp.width * 0.3), int(sp.height * 0.05)
+        canvas = Image.new("RGBA", (sp.width + 2 * pad_w, sp.height + pad_h), (0, 0, 0, 0))
+        canvas.paste(sp, (pad_w, pad_h), sp)
+        if len(_sprite_cache) > 300:
             _sprite_cache.clear()
-        _sprite_cache[key] = sp
+        _sprite_cache[key] = (canvas, pad_h, sp.width)
     return _sprite_cache[key]
+
+
+def shadow(width):
+    key = int(width // 10)
+    if key not in _shadow_cache:
+        sh = Image.new("RGBA", (int(width * 1.6), 160), (0, 0, 0, 0))
+        d = ImageDraw.Draw(sh)
+        d.ellipse((int(width * 0.3), 50, int(width * 1.3), 110), fill=(0, 0, 0, 150))
+        _shadow_cache[key] = sh.filter(ImageFilter.GaussianBlur(14))
+    return _shadow_cache[key]
+
+
+def vignette():
+    global _vignette
+    if _vignette is None:
+        g = Image.radial_gradient("L").resize((W, H), Image.BILINEAR)  # 0 centre -> 255 edge
+        dark = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+        dark.putalpha(g.point(lambda v: int(max(0, v - 90) * 0.75)))
+        warm = Image.new("RGBA", (W, H), (255, 170, 80, 22))
+        _vignette = Image.alpha_composite(warm, dark)
+    return _vignette
 
 
 def ease(t):
@@ -421,31 +471,44 @@ def ease(t):
     return 1 - (1 - t) ** 3
 
 
+def camera(frame, ctx, t):
+    if ctx["shot"] == "wide":
+        z = 1.0 + 0.06 * t
+        cx, cy = W / 2, H / 2
+    else:
+        z = 1.38 + 0.08 * t
+        cx, cy = ctx["focus_x"], 1000
+    w0, h0 = W / z, H / z
+    cx = min(max(cx, w0 / 2), W - w0 / 2)
+    cy = min(max(cy, h0 / 2), H - h0 / 2)
+    return frame.resize((W, H), Image.BILINEAR, box=(cx - w0 / 2, cy - h0 / 2, cx + w0 / 2, cy + h0 / 2))
+
+
 def render_ai(assets, ctx, i, n, level, blink):
     t = i / max(1, n - 1)
-    bg = assets["places"][ctx["place"]]
-    z = 1.0 + 0.14 * (t if ctx["zoom_in"] else 1 - t)
-    bw, bh = bg.size
-    cx = bw / 2 + (t - 0.5) * 70 * ctx["pan"]
-    cy = bh / 2 + (t - 0.5) * 40
-    w0, h0 = W / z, H / z
-    box = (cx - w0 / 2, cy - h0 / 2, cx + w0 / 2, cy + h0 / 2)
-    frame = bg.resize((W, H), Image.BILINEAR, box=box).convert("RGBA")
     sec = i / FPS
-    for who, side, scale, dim in ctx["cast"]:
-        if who is None:
-            continue
-        speaking = who == ctx["speaker"]
-        state = ("talk" if level > 0 else "blink" if blink else "base") if speaking else ("blink" if blink else "base")
-        pulse = 1 + 0.012 * level if speaking else 1.0
-        sp = sprite(assets, who, state, scale * pulse, dim)
-        x_target = 300 if side == "L" else 780
-        slide = (1 - ease(sec / 0.35)) * (-420 if side == "L" else 420) if speaking else 0
-        bob = 9 * math.sin(2 * math.pi * (sec * 0.8 + (0.0 if side == "L" else 0.4)))
-        x = int(x_target + slide - sp.width / 2)
-        y = int(1075 - sp.height + bob)
-        frame.paste(sp, (x, y), sp)
-    return frame
+    bg = assets["places_blur" if ctx["shot"] == "close" else "places"][ctx["place"]]
+    frame = bg.convert("RGBA")
+    for who, side, speaking, enter in ctx["cast"]:
+        face = "talk" if (speaking and level > 0) else ("blink" if blink else "base")
+        breathe = 1 + 0.008 * math.sin(2 * math.pi * (sec * 0.35 + (0.0 if side == "L" else 0.5)))
+        pulse = 1 + 0.010 * level if speaking else 1.0
+        canvas, pad_h, sp_w = sprite(assets, who, face, 0.9 * breathe * pulse)
+        # lean toward the partner; the speaker sways with the voice, the listener nods slowly
+        facing = 1 if side == "L" else -1
+        if speaking:
+            lean = 2.0 + 1.8 * level * math.sin(2 * math.pi * 2.6 * sec)
+        else:
+            lean = 1.6 + 1.0 * math.sin(2 * math.pi * 0.55 * sec + 1.0)
+        rot = canvas.rotate(-facing * lean, resample=Image.BILINEAR, center=(canvas.width / 2, canvas.height))
+        slide = (1 - ease(sec / 0.4)) * (-480 if side == "L" else 480) if enter else 0
+        bob = 4 * math.sin(2 * math.pi * (sec * 0.8 + (0.0 if side == "L" else 0.4)))
+        cx = SIDE_X[side] + slide
+        sh = shadow(sp_w)
+        frame.alpha_composite(sh, (int(cx - sh.width / 2), int(FLOOR_Y - sh.height / 2 - 5))) if 0 <= int(cx - sh.width / 2) and int(cx + sh.width / 2) <= W else frame.paste(sh, (int(cx - sh.width / 2), int(FLOOR_Y - sh.height / 2 - 5)), sh)
+        frame.paste(rot, (int(cx - rot.width / 2), int(FLOOR_Y - rot.height + bob)), rot)
+    frame = camera(frame, ctx, t)
+    return Image.alpha_composite(frame, vignette())
 
 
 # ---------------------------------------------------------------- video
@@ -527,17 +590,26 @@ def main():
         ensure_renderer()
     ep = json.loads((ROOT / "transcripts" / f"{DAY}.json").read_text(encoding="utf-8"))
 
+    sides, prev_cast = {}, set()
+
     def make_renderer(place, speaker, prev, idx):
+        nonlocal prev_cast
         if assets is None:
             return lambda i, n, level, blink: base_frame(work, speaker, level, blink)
         cast = []
         if speaker:
-            sp_side = "L" if idx % 2 else "R"
-            cast.append((speaker, sp_side, 0.9, 1.0))
-            if prev and prev != speaker:
-                cast.append((prev, "R" if sp_side == "L" else "L", 0.68, 0.8))
-        ctx = {"place": place, "speaker": speaker, "cast": cast,
-               "zoom_in": idx % 2 == 0, "pan": 1 if idx % 3 else -1}
+            if prev and prev != speaker and prev in sides:
+                sides[speaker] = "R" if sides[prev] == "L" else "L"
+                cast.append((prev, sides[prev], False, prev not in prev_cast))
+            else:
+                sides.setdefault(speaker, "L")
+            cast.append((speaker, sides[speaker], True, speaker not in prev_cast))
+            prev_cast = {c[0] for c in cast}
+        else:
+            prev_cast = set()
+        shot = "wide" if (idx % 3 == 1 or not speaker) else "close"
+        focus_x = SIDE_X[sides[speaker]] if speaker else W / 2
+        ctx = {"place": place, "speaker": speaker, "cast": cast, "shot": shot, "focus_x": focus_x}
         return lambda i, n, level, blink: render_ai(assets, ctx, i, n, level, blink)
 
     scenes = []
