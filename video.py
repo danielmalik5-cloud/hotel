@@ -1,15 +1,22 @@
 #!/usr/bin/env python3
-"""Token Hotel video maker (animated).
+"""Token Hotel video maker (animated, AI-drawn hotel).
 
-Reads today's transcript and makes a vertical 1080x1920 video:
-  - the three hotel characters, drawn in code (always identical, free)
-  - the speaker's mouth moves with the voice, everyone blinks
-  - voice per line (Gemini TTS, one voice per character)
-  - big captions, title card, and an "AI agents wrote every line" end card
-Fallbacks: no GOOGLE_API_KEY or voice unavailable -> silent scenes with a
-pretend-talking mouth and reading-time length.
+Reads today's transcript and makes a vertical 1080x1920 video.
 
-Env: GOOGLE_API_KEY, MOCK=1 (no network), DAY=YYYY-MM-DD, TTS_MODEL
+First run (and whenever something is missing) it asks Google's image model to
+draw the hotel places and the three robot characters, and saves them in the
+assets/ folder, so every later video reuses them for free.
+  - places: lobby, reception, bar, hallway with door 404, elevator
+  - characters: Pierce, Vex, Madame Halloran, each with 3 faces
+    (neutral, talking, eyes closed)
+Per video: slow camera moves, cuts between places, characters sliding in,
+floating, the speaker's mouth following the voice, blinking, big captions.
+
+Fallback: if the drawn assets are not all available, the older code-drawn
+characters are used so a video is always produced.
+
+Env: GOOGLE_API_KEY, MOCK=1 (no network), DAY=YYYY-MM-DD, TTS_MODEL,
+     IMAGE_MODEL, MAX_IMAGES (cost cap per run, default 20)
 """
 import array
 import base64
@@ -26,15 +33,17 @@ import wave
 from datetime import date
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageChops, ImageDraw, ImageEnhance, ImageFilter, ImageFont
 
 ROOT = Path(__file__).parent
 W, H = 1080, 1920
-FPS = 12
+FPS = 15
 MOCK = os.environ.get("MOCK") == "1"
 KEY = os.environ.get("GOOGLE_API_KEY", "")
 DAY = os.environ.get("DAY") or date.today().isoformat()
 TTS_MODEL = os.environ.get("TTS_MODEL", "gemini-2.5-flash-preview-tts")
+IMAGE_MODEL = os.environ.get("IMAGE_MODEL", "gemini-2.5-flash-image")
+MAX_IMAGES = int(os.environ.get("MAX_IMAGES", "20"))
 API = "https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent"
 
 VOICES = {"Pierce": "Puck", "Vex": "Charon", "Madame Halloran": "Kore", "Narrator": "Orus"}
@@ -241,8 +250,206 @@ def mouth_levels(wav, n_frames, text):
     return [pattern[(i + len(text)) % len(pattern)] if i < talk else 0 for i in range(n_frames)]
 
 
+
+# ---------------------------------------------------------------- AI drawn assets
+STYLE = ("Flat 2D comic illustration, bold black outlines, warm retro colors, charming and funny, "
+         "clean shapes, consistent character design")
+PLACES = {
+    "lobby": "a grand old hotel lobby interior, dark wood paneling, brass lamps, marble floor, a reception desk far in the background, warm golden light",
+    "reception": "a hotel front desk area, brass service bell, wall of room keys, an open guest book, warm lamp light",
+    "bar": "a small cozy hotel bar, shelves of glowing colorful bottles, brass taps, empty stools, moody warm light",
+    "hallway": "a long hotel hallway with red carpet and many identical doors, at the far end one mysterious glowing door with the number 404",
+    "elevator": "a vintage brass hotel elevator with open doors and a round floor indicator dial above it, marble walls",
+}
+ROBOTS = {
+    "Pierce": ("a nervous, apologetic humanoid robot hotel porter: slim body of polished red and brass metal, "
+               "small round head with a glowing LED face showing worried eyes, red pillbox cap with gold buttons, "
+               "red bellhop jacket with gold buttons, a tiny drop of oil on the forehead like a sweat drop"),
+    "Vex": ("a tall, deadpan humanoid robot bartender: sleek black metal body, slicked-back black metal head plating, "
+            "half-lidded bored glowing LED eyes, black vest with a green bow tie, holding a cocktail shaker"),
+    "Madame Halloran": ("a stern, elegant humanoid robot hotel manager, older-lady design: purple blazer, "
+                        "silver hair bun made of fine metal wires, cat-eye glasses on a chain, "
+                        "disapproving glowing LED face, hands clasped in front"),
+}
+STATES = {
+    "base": "Neutral expression, mouth closed, eyes open.",
+    "talk": "Change ONLY the mouth: wide open as if speaking. Keep everything else pixel-identical.",
+    "blink": "Change ONLY the eyes: closed, as in a blink. Keep everything else pixel-identical.",
+}
+PLACE_FOR = {"Pierce": ["lobby", "hallway"], "Vex": ["bar"], "Madame Halloran": ["reception", "elevator"]}
+HEIGHT = 1000  # standard sprite height in pixels
+_images_made = 0
+new_assets = []
+
+
+def assets_dir():
+    d = ROOT / "assets"
+    d.mkdir(exist_ok=True)
+    (d / ".gitkeep").touch()  # keeps the folder tracked even when empty
+    return d
+
+
+def gen_image(prompt, out_path, reference=None):
+    """Ask the image model for a picture. True if saved."""
+    global _images_made
+    if out_path.exists():
+        return True
+    if MOCK or not KEY or _images_made >= MAX_IMAGES:
+        return False
+    parts = [{"text": prompt}]
+    if reference is not None:
+        parts.append({"inline_data": {"mime_type": "image/png",
+                                      "data": base64.b64encode(Path(reference).read_bytes()).decode()}})
+    for use_ratio in (True, False):
+        payload = {"contents": [{"parts": parts}]}
+        if use_ratio:
+            payload["generationConfig"] = {"imageConfig": {"aspectRatio": "9:16"}}
+        for attempt in range(3):
+            try:
+                _images_made += 1
+                data = post(IMAGE_MODEL, payload)
+                for part in data["candidates"][0]["content"]["parts"]:
+                    inline = part.get("inlineData") or part.get("inline_data")
+                    if inline:
+                        out_path.write_bytes(base64.b64decode(inline["data"]))
+                        new_assets.append(out_path)
+                        return True
+                print(f"No image returned for {out_path.name}.", file=sys.stderr)
+                return False
+            except urllib.error.HTTPError as e:
+                if e.code == 429 and attempt < 2:
+                    time.sleep(15)
+                    continue
+                if e.code == 400 and use_ratio:
+                    break  # try again without the aspect ratio setting
+                print(f"Image {out_path.name} failed ({e.code}).", file=sys.stderr)
+                return False
+            except Exception as e:
+                print(f"Image {out_path.name} failed ({e}).", file=sys.stderr)
+                return False
+    return False
+
+
+def make_assets():
+    d = assets_dir()
+    (d / "places").mkdir(exist_ok=True)
+    (d / "robots").mkdir(exist_ok=True)
+    for name, desc in PLACES.items():
+        gen_image(f"{STYLE}. Vertical 9:16 composition. Empty scene with no people or characters: {desc}. "
+                  "Keep the lower third calm and uncluttered. No text except a door number if mentioned.",
+                  d / "places" / f"{name}.png")
+    for name, desc in ROBOTS.items():
+        slug = name.replace(" ", "_")
+        base = d / "robots" / f"{slug}_base.png"
+        gen_image(f"{STYLE}. Full body character, standing, facing the viewer, centered, whole body visible from "
+                  f"head to feet, on a solid pure bright green (#00FF00) background with nothing else. "
+                  f"Character: {desc}. {STATES['base']}", base)
+        if base.exists():
+            for state in ("talk", "blink"):
+                gen_image(f"Edit this image of the same character. {STATES[state]} Same green background, "
+                          "same size and position.", d / "robots" / f"{slug}_{state}.png", reference=base)
+
+
+def key_out_green(im):
+    """Turn the solid green background into transparency and trim to the character."""
+    im = im.convert("RGB")
+    r, g, b = im.split()
+    greenness = ImageChops.subtract(g, ImageChops.lighter(r, b))
+    alpha = greenness.point(lambda v: 0 if v > 60 else (255 if v < 25 else int(255 * (60 - v) / 35)))
+    alpha = alpha.filter(ImageFilter.MinFilter(3)).filter(ImageFilter.GaussianBlur(0.8))
+    g2 = ImageChops.darker(g, ImageChops.lighter(r, b))  # remove green spill on edges
+    out = Image.merge("RGBA", (r, g2, b, alpha))
+    box = alpha.point(lambda v: 255 if v > 40 else 0).getbbox()
+    return out.crop(box) if box else out
+
+
+def load_assets():
+    """Return {'places': {...}, 'robots': {...}} or None if anything is missing."""
+    d = ROOT / "assets"
+    places, robots = {}, {}
+    for name in PLACES:
+        p = d / "places" / f"{name}.png"
+        if not p.exists():
+            return None
+        im = Image.open(p).convert("RGB")
+        scale = max(W / im.width, H / im.height) * 1.2
+        im = im.resize((int(im.width * scale), int(im.height * scale)), Image.LANCZOS)
+        left, top = (im.width - int(W * 1.2)) // 2, (im.height - int(H * 1.2)) // 2
+        places[name] = im.crop((left, top, left + int(W * 1.2), top + int(H * 1.2)))
+    for name in ROBOTS:
+        slug = name.replace(" ", "_")
+        states = {}
+        base_h = None
+        for s in STATES:
+            p = d / "robots" / f"{slug}_{s}.png"
+            if not p.exists():
+                return None
+            sp = key_out_green(Image.open(p))
+            if s == "base":
+                base_h = sp.height
+            sp = sp.resize((max(1, int(sp.width * HEIGHT / base_h)), HEIGHT), Image.LANCZOS)
+            states[s] = sp
+        # align the three faces: same width, anchored bottom-centre
+        w = max(sp.width for sp in states.values())
+        for s, sp in list(states.items()):
+            canvas = Image.new("RGBA", (w, HEIGHT), (0, 0, 0, 0))
+            canvas.paste(sp, ((w - sp.width) // 2, HEIGHT - sp.height), sp)
+            states[s] = canvas
+        robots[name] = states
+    return {"places": places, "robots": robots}
+
+
+_sprite_cache = {}
+
+
+def sprite(assets, name, state, scale, dim):
+    key = (name, state, round(scale, 3), dim)
+    if key not in _sprite_cache:
+        sp = assets["robots"][name][state]
+        sp = sp.resize((max(1, int(sp.width * scale)), max(1, int(sp.height * scale))), Image.BILINEAR)
+        if dim < 1.0:
+            rgb = ImageEnhance.Brightness(sp.convert("RGB")).enhance(dim)
+            sp = Image.merge("RGBA", (*rgb.split(), sp.split()[3]))
+        if len(_sprite_cache) > 400:
+            _sprite_cache.clear()
+        _sprite_cache[key] = sp
+    return _sprite_cache[key]
+
+
+def ease(t):
+    t = max(0.0, min(1.0, t))
+    return 1 - (1 - t) ** 3
+
+
+def render_ai(assets, ctx, i, n, level, blink):
+    t = i / max(1, n - 1)
+    bg = assets["places"][ctx["place"]]
+    z = 1.0 + 0.14 * (t if ctx["zoom_in"] else 1 - t)
+    bw, bh = bg.size
+    cx = bw / 2 + (t - 0.5) * 70 * ctx["pan"]
+    cy = bh / 2 + (t - 0.5) * 40
+    w0, h0 = W / z, H / z
+    box = (cx - w0 / 2, cy - h0 / 2, cx + w0 / 2, cy + h0 / 2)
+    frame = bg.resize((W, H), Image.BILINEAR, box=box).convert("RGBA")
+    sec = i / FPS
+    for who, side, scale, dim in ctx["cast"]:
+        if who is None:
+            continue
+        speaking = who == ctx["speaker"]
+        state = ("talk" if level > 0 else "blink" if blink else "base") if speaking else ("blink" if blink else "base")
+        pulse = 1 + 0.012 * level if speaking else 1.0
+        sp = sprite(assets, who, state, scale * pulse, dim)
+        x_target = 300 if side == "L" else 780
+        slide = (1 - ease(sec / 0.35)) * (-420 if side == "L" else 420) if speaking else 0
+        bob = 9 * math.sin(2 * math.pi * (sec * 0.8 + (0.0 if side == "L" else 0.4)))
+        x = int(x_target + slide - sp.width / 2)
+        y = int(1075 - sp.height + bob)
+        frame.paste(sp, (x, y), sp)
+    return frame
+
+
 # ---------------------------------------------------------------- video
-def make_scene(work, idx, speaker, name, role, text, voice_as, min_len=2.0, pad=0.5):
+def make_scene(work, idx, name, role, text, voice_as, renderer, min_len=2.0, pad=0.5):
     wav, mp4 = work / f"{idx:02d}.wav", work / f"{idx:02d}.mp4"
     dur = gen_voice(text, voice_as, wav) if voice_as else None
     has_voice = dur is not None
@@ -250,13 +457,14 @@ def make_scene(work, idx, speaker, name, role, text, voice_as, min_len=2.0, pad=
         dur = max(min_len, len(text.split()) * 0.4)
     total = dur + pad
     n = max(1, round(total * FPS))
-    levels = mouth_levels(wav if has_voice else None, n, text) if speaker else [0] * n
+    talking = name not in ("Narrator",)
+    levels = mouth_levels(wav if has_voice else None, n, text) if talking else [0] * n
     ov = overlay(name, role, text)
     frames = work / f"f{idx:02d}"
     frames.mkdir(exist_ok=True)
     for i in range(n):
-        blink = 1 if ((i + idx * 7) % 40) in (0, 1) else 0
-        im = Image.alpha_composite(base_frame(work, speaker, levels[i], blink), ov).convert("RGB")
+        blink = 1 if ((i + idx * 7) % 45) in (0, 1) else 0
+        im = Image.alpha_composite(renderer(i, n, levels[i], blink).convert("RGBA"), ov).convert("RGB")
         im.save(frames / f"{i:04d}.jpg", quality=92)
     tmp = work / f"tmp_{idx:02d}.mp4"
     cmd = ["ffmpeg", "-y", "-loglevel", "error", "-framerate", str(FPS), "-i", str(frames / "%04d.jpg")]
@@ -272,17 +480,91 @@ def make_scene(work, idx, speaker, name, role, text, voice_as, min_len=2.0, pad=
     return mp4
 
 
+def static_video(png, seconds, out):
+    tmp = out.with_name("tmp_" + out.name)
+    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-loop", "1", "-framerate", "5", "-i", str(png),
+                    "-f", "lavfi", "-i", "anullsrc=r=24000:cl=mono", "-t", str(seconds), "-r", "30",
+                    "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", "-ar", "24000", "-ac", "1",
+                    "-shortest", str(tmp)], check=True)
+    tmp.rename(out)
+    return out
+
+
+def preview_sheets(assets, work):
+    """Two contact sheets so the new drawings can be reviewed on a phone."""
+    bgc = (42, 31, 24)
+    f = ImageFont.truetype(FONT_B, 46)
+    s1 = Image.new("RGB", (W, H), bgc)
+    d = ImageDraw.Draw(s1)
+    d.text((W // 2, 70), "ROBOTS: neutral / talking / blink", font=f, fill=(230, 190, 110), anchor="mm")
+    for c, name in enumerate(ROBOTS):
+        d.text((c * 360 + 180, 150), name, font=ImageFont.truetype(FONT_B, 30), fill=(255, 255, 255), anchor="mm")
+        for r, state in enumerate(STATES):
+            sp = assets["robots"][name][state]
+            sp = sp.resize((int(sp.width * 520 / HEIGHT), 520), Image.LANCZOS)
+            s1.paste(sp, (c * 360 + 180 - sp.width // 2, 200 + r * 560), sp)
+    s2 = Image.new("RGB", (W, H), bgc)
+    d = ImageDraw.Draw(s2)
+    d.text((W // 2, 70), "PLACES", font=f, fill=(230, 190, 110), anchor="mm")
+    for k, name in enumerate(PLACES):
+        im = assets["places"][name].resize((324, 576), Image.LANCZOS)
+        x, y = (k % 3) * 360 + 18, 140 + (k // 3) * 640
+        s2.paste(im, (x, y))
+        d.text((x + 162, y + 600), name, font=ImageFont.truetype(FONT_B, 30), fill=(255, 255, 255), anchor="mm")
+    p1, p2 = work / "sheet_robots.png", work / "sheet_places.png"
+    s1.save(p1)
+    s2.save(p2)
+    return p1, p2
+
+
 def main():
-    ensure_renderer()
-    ep = json.loads((ROOT / "transcripts" / f"{DAY}.json").read_text(encoding="utf-8"))
     work = ROOT / "build" / DAY
     work.mkdir(parents=True, exist_ok=True)
-    scenes = [make_scene(work, 0, None, "Narrator", "", "Tonight at the Token Hotel: " + ep["situation"],
-                         "Narrator", min_len=3)]
+    make_assets()
+    assets = load_assets()
+    if assets is None:
+        print("Drawn assets are not complete; using the simple code-drawn characters.", file=sys.stderr)
+        ensure_renderer()
+    ep = json.loads((ROOT / "transcripts" / f"{DAY}.json").read_text(encoding="utf-8"))
+
+    def make_renderer(place, speaker, prev, idx):
+        if assets is None:
+            return lambda i, n, level, blink: base_frame(work, speaker, level, blink)
+        cast = []
+        if speaker:
+            sp_side = "L" if idx % 2 else "R"
+            cast.append((speaker, sp_side, 0.9, 1.0))
+            if prev and prev != speaker:
+                cast.append((prev, "R" if sp_side == "L" else "L", 0.68, 0.8))
+        ctx = {"place": place, "speaker": speaker, "cast": cast,
+               "zoom_in": idx % 2 == 0, "pan": 1 if idx % 3 else -1}
+        return lambda i, n, level, blink: render_ai(assets, ctx, i, n, level, blink)
+
+    scenes = []
+    if assets is not None and new_assets:
+        p1, p2 = preview_sheets(assets, work)
+        pv = []
+        for k, p in enumerate((p1, p2)):
+            pv.append(static_video(p, 6, work / f"pv{k}.mp4"))
+        (work / "pv.txt").write_text("".join(f"file '{p.resolve()}'\n" for p in pv))
+        (ROOT / "videos").mkdir(exist_ok=True)
+        subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i",
+                        str(work / "pv.txt"), "-c", "copy",
+                        str(ROOT / "videos" / f"00_new_drawings_{DAY}.mp4")], check=True)
+
+    scenes.append(make_scene(work, 0, "Narrator", "", "Tonight at the Token Hotel: " + ep["situation"],
+                             "Narrator", make_renderer("lobby", None, None, 0), min_len=3))
+    prev = None
     for i, l in enumerate(ep["lines"], start=1):
-        scenes.append(make_scene(work, i, l["speaker"], l["speaker"], l["role"], l["line"], l["speaker"]))
-    scenes.append(make_scene(work, len(ep["lines"]) + 1, None, "Narrator", "",
-                             "Every line was written by an AI agent. New episode every day.", "Narrator", min_len=3))
+        who = l["speaker"]
+        places = PLACE_FOR.get(who, ["lobby"])
+        place = places[(i // 3) % len(places)]
+        scenes.append(make_scene(work, i, who, l["role"], l["line"], who,
+                                 make_renderer(place, who, prev, i)))
+        prev = who
+    scenes.append(make_scene(work, len(ep["lines"]) + 1, "Narrator", "",
+                             "Every line was written by an AI agent. New episode every day.", "Narrator",
+                             make_renderer("hallway", None, None, 1), min_len=3))
 
     lst = work / "list.txt"
     lst.write_text("".join(f"file '{p.resolve()}'\n" for p in scenes))
@@ -293,7 +575,7 @@ def main():
     subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", str(lst),
                     "-c", "copy", str(tmp)], check=True)
     tmp.rename(out)
-    print(f"Video saved: {out}")
+    print(f"Video saved: {out}. New drawings this run: {len(new_assets)}.")
 
 
 if __name__ == "__main__":
