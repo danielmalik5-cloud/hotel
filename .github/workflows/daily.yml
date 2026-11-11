@@ -1,0 +1,30 @@
+name: Daily hotel episode
+
+on:
+  schedule:
+    - cron: "0 6 * * *"   # every day at 06:00 UTC
+  workflow_dispatch: {}    # lets you also press a "Run" button by hand
+
+permissions:
+  contents: write
+
+jobs:
+  episode:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate today's conversation
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          MAX_CALLS: "16"
+          TURNS: "12"
+        run: python3 engine.py
+
+      - name: Save the transcript
+        run: |
+          git config user.name "token-hotel-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add transcripts
+          git commit -m "New hotel episode" || echo "Nothing new to save"
+          git push
