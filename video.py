@@ -764,6 +764,11 @@ INTRO_SCRIPT = [
 ]
 
 
+# camera angle used for each intro scene (falls back to the original place if an angle is missing)
+INTRO_PLACES = ["lobby", "lobby_d", "lobby_d", "bar", "bar_e", "reception_b", "reception_g",
+                "lobby_e", "lobby_e", "lobby_b", "hallway", "terrace_d"]
+
+
 def guest_sheet(assets, out):
     f = ImageFont.truetype(FONT_B, 40)
     sheet = Image.new("RGB", (1080, 900), (42, 31, 24))
@@ -796,6 +801,8 @@ def main_intro():
     guest_sheet(assets, ROOT / "videos" / "guests_preview.png")
     scenes = []
     for idx, (name, role, line, place, cast_spec, shot) in enumerate(INTRO_SCRIPT):
+        wanted = INTRO_PLACES[idx] if idx < len(INTRO_PLACES) else place
+        place = wanted if wanted in assets["places"] else place
         cast = [(who, side, speaking, True) for who, side, speaking in cast_spec]
         speaker = next((w for w, _, sp in cast_spec if sp), None)
         side = next((sd for w, sd, sp in cast_spec if sp), "L")
