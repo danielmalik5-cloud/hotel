@@ -276,9 +276,10 @@ ROBOTS = {
                         "disapproving glowing LED face, hands clasped in front"),
 }
 GUESTS = {
-    "Mr. Loop": ("a polite, old-fashioned gentleman robot guest: tall slim body of polished silver and teal metal, "
-                 "round head with a glowing LED face with kind but slightly glazed eyes, a spinning circular arrow symbol on his chest, "
-                 "teal three-piece suit with a pocket watch chain, a small suitcase in one hand"),
+    "Mr. Loop": ("a polite, old-fashioned gentleman robot guest: tall slim body of polished silver metal, "
+                 "round head with a glowing warm yellow LED face with kind but slightly glazed eyes, a spinning circular arrow symbol on his chest, "
+                 "burgundy red three-piece suit with a pocket watch chain, a small brown suitcase in one hand. "
+                 "Important: use NO green, teal, cyan or turquoise colors anywhere on the character"),
     "Ms. Context": ("a dreamy, scatterbrained humanoid robot lady guest: orange and cream metal body, "
                     "oval head with a glowing LED face with wide confused eyes, a large floppy sun hat with a small sticky note on it, "
                     "yellow travel coat, holding a travel bag, a tiny question mark floating near her head"),
@@ -292,6 +293,10 @@ PLACE_FOR = {"Pierce": ["lobby", "hallway"], "Vex": ["bar"], "Madame Halloran": 
 HEIGHT = 1000  # standard sprite height in pixels
 _images_made = 0
 new_assets = []
+
+
+def slug_of(name):
+    return name.replace(" ", "_") + ("_v2" if name == "Mr. Loop" else "")
 
 
 def assets_dir():
@@ -356,7 +361,7 @@ def make_assets():
 
 def make_robot_images(d, name, desc):
     (d / "robots").mkdir(exist_ok=True)
-    slug = name.replace(" ", "_")
+    slug = slug_of(name)
     base = d / "robots" / f"{slug}_base.png"
     gen_image(f"{STYLE}. Full body character, standing, facing the viewer, centered, whole body visible from "
               f"head to feet, on a solid pure bright green (#00FF00) background with nothing else. "
@@ -407,7 +412,7 @@ def key_out_green(im):
 
 
 def load_robot(d, name):
-    slug = name.replace(" ", "_")
+    slug = slug_of(name)
     states = {}
     base_h = None
     for st in STATES:
