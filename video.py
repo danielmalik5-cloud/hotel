@@ -301,6 +301,36 @@ ANGLE_VIEWS = {
     "elevator": {"b": "inside the elevator looking out through the open doors at a lobby",
                  "c": "seen from the side in a corridor, brass elevator doors half open, the round floor dial above"},
 }
+EXTRA_PLACES = {
+    "dining": "an elegant hotel dining room, round tables with white tablecloths and candles, a crystal chandelier, tall windows with heavy curtains, warm golden light",
+    "terrace": "an outdoor hotel terrace at dusk, wrought-iron tables and chairs, strings of warm lights, potted plants, a stone balustrade, a distant city skyline, soft blue evening sky",
+}
+EXTRA_PLACE_FOR = {"Pierce": ["dining", "terrace"], "Madame Halloran": ["dining"], "Vex": ["terrace"]}
+ANGLE_VIEWS.update({
+    "dining": {"b": "seen from the side, a long row of round tables set for dinner, a buffet table at the far end",
+               "c": "a closer view of one table by the window, a candle and a vase, the room softly blurred behind"},
+    "terrace": {"b": "seen from the stone balustrade looking back at the hotel with glowing windows, a few tables in front",
+                "c": "a cozy corner of the terrace with a sofa, a low table and hanging lamps"},
+})
+ANGLE_SUFFIXES = ("b", "c", "d", "e")
+IGNORED_ANGLES = {"lobby_c", "reception_c", "bar_c", "elevator_c"}  # too similar to the original; replaced by newer ones
+ANGLE_VIEWS["lobby"].update({
+    "d": "the staircase corner of the lobby: a curved wooden staircase on the left, a cozy lounge with a sofa and a low table on the right",
+    "e": "near the front entrance: a revolving brass door, a luggage cart and a coat stand, a wooden bench along the wall, seen from inside the lobby"})
+ANGLE_VIEWS["reception"].update({
+    "d": "the waiting area next to the front desk: a leather sofa and two armchairs around a low table, the desk visible at the far side",
+    "e": "the front desk seen from the right side, a wall clock and mailboxes behind it, the open guest book on the counter in the foreground"})
+ANGLE_VIEWS["bar"].update({
+    "d": "a cozy lounge corner of the bar with round tables, leather armchairs and a small sofa, warm low lamps, the bar counter far in the background",
+    "e": "the bar counter seen from the right side, glowing bottle shelves, a few stools, a booth with a table near a window"})
+ANGLE_VIEWS["elevator"].update({
+    "d": "seen from the right side in a corridor, brass elevator doors half open, the round floor dial above, a bench and a potted plant"})
+
+
+def angle_keys(name):
+    return [f"{name}_{s}" for s in ANGLE_SUFFIXES if f"{name}_{s}" not in IGNORED_ANGLES]
+
+
 PLACE_FOR = {"Pierce": ["lobby", "hallway"], "Vex": ["bar"], "Madame Halloran": ["reception", "elevator"]}
 HEIGHT = 1000  # standard sprite height in pixels
 _images_made = 0
@@ -394,11 +424,17 @@ def make_angle_assets():
     """Two extra camera angles per place, drawn as edits of the original picture."""
     d = assets_dir()
     (d / "places").mkdir(exist_ok=True)
+    for name, desc in EXTRA_PLACES.items():
+        gen_image(f"{STYLE}. Vertical 9:16 composition. Empty scene with no people or characters: {desc}. "
+                  "Keep the lower third calm and uncluttered, floor visible. No text.",
+                  d / "places" / f"{name}.png")
     for name, views in ANGLE_VIEWS.items():
         base = d / "places" / f"{name}.png"
         if not base.exists():
             continue
         for suffix, view in views.items():
+            if f"{name}_{suffix}" in IGNORED_ANGLES:
+                continue
             gen_image(f"Edit this image: draw the SAME room again from a different camera angle: {view}. "
                       "Keep exactly the same art style, colors, furniture, lamps and lighting. "
                       "Vertical 9:16 composition, eye-level camera, the floor visible across the lower third, "
@@ -502,10 +538,24 @@ def load_assets():
         left, top = (im.width - W) // 2, (im.height - H) // 2
         places[name] = im.crop((left, top, left + W, top + H))
         places_blur[name] = places[name].filter(ImageFilter.GaussianBlur(5))
-    for name in list(PLACES):  # optional extra camera angles
-        for suffix in ("b", "c"):
+    for name in EXTRA_PLACES:  # optional extra places (dining room, terrace)
+        p = d / "places" / f"{name}.png"
+        if p.exists():
+            try:
+                im = Image.open(p).convert("RGB")
+                scale = max(W / im.width, H / im.height)
+                im = im.resize((int(im.width * scale + 0.5), int(im.height * scale + 0.5)), Image.LANCZOS)
+                left, top = (im.width - W) // 2, (im.height - H) // 2
+                places[name] = im.crop((left, top, left + W, top + H))
+                places_blur[name] = places[name].filter(ImageFilter.GaussianBlur(5))
+            except Exception as e:
+                print(f"Skipping place {p.name}: {e}", file=sys.stderr)
+    for name in list(PLACES) + list(EXTRA_PLACES):  # optional extra camera angles
+        if name not in places:
+            continue
+        for suffix in ANGLE_SUFFIXES:
             p = d / "places" / f"{name}_{suffix}.png"
-            if p.exists():
+            if f"{name}_{suffix}" not in IGNORED_ANGLES and p.exists():
                 try:
                     im = Image.open(p).convert("RGB")
                     scale = max(W / im.width, H / im.height)
@@ -525,7 +575,7 @@ def load_assets():
 
 def pick_variant(assets, place, idx):
     """Choose one of the available camera angles of a place, varying by day and by line."""
-    options = [place] + [f"{place}_{s}" for s in ("b", "c") if f"{place}_{s}" in assets["places"]]
+    options = [place] + [k for k in angle_keys(place) if k in assets["places"]]
     return options[(idx // 2 + date.fromisoformat(DAY).toordinal()) % len(options)]
 
 
@@ -754,13 +804,14 @@ def main_intro():
 
 
 def angle_sheet(assets, out):
-    f = ImageFont.truetype(FONT_B, 34)
-    names = list(PLACES)
-    tw, th = 340, 604
-    sheet = Image.new("RGB", (3 * tw + 40, len(names) * (th + 60) + 20), (42, 31, 24))
+    f = ImageFont.truetype(FONT_B, 30)
+    names = [n for n in list(PLACES) + list(EXTRA_PLACES) if n in assets["places"]]
+    tw, th = 300, 533
+    cols = 1 + max(len([k for k in angle_keys(n) if k in assets["places"]]) for n in names)
+    sheet = Image.new("RGB", (cols * (tw + 10) + 10, len(names) * (th + 60) + 20), (42, 31, 24))
     d = ImageDraw.Draw(sheet)
     for r, name in enumerate(names):
-        for c, key in enumerate((name, f"{name}_b", f"{name}_c")):
+        for c, key in enumerate([name] + [k for k in angle_keys(name) if k in assets["places"]]):
             x, y = 10 + c * (tw + 10), 10 + r * (th + 60)
             if key in assets["places"]:
                 sheet.paste(assets["places"][key].resize((tw, th), Image.LANCZOS), (x, y))
@@ -828,7 +879,9 @@ def main():
     prev = None
     for i, l in enumerate(ep["lines"], start=1):
         who = l["speaker"]
-        places = PLACE_FOR.get(who, ["lobby"])
+        places = list(PLACE_FOR.get(who, ["lobby"]))
+        if assets is not None:
+            places += [p for p in EXTRA_PLACE_FOR.get(who, []) if p in assets["places"]]
         place = places[(i // 3) % len(places)]
         if assets is not None:
             place = pick_variant(assets, place, i)
