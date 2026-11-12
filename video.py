@@ -213,11 +213,11 @@ def gen_voice(text, speaker, out_wav):
     import hashlib
     cache = None
     prompt = (NARRATOR_STYLE if speaker == "Narrator" else "") + text
-    if speaker == "Narrator":
-        # the narrator's lines are cached so the same line always sounds the same
+    if True:
+        # every voice line is cached, so a re-run only asks for the lines that are missing
         cdir = ROOT / "assets" / "voices"
         cdir.mkdir(parents=True, exist_ok=True)
-        cache = cdir / (hashlib.md5((VOICES[speaker] + prompt).encode()).hexdigest()[:16] + ".wav")
+        cache = cdir / (hashlib.md5((TTS_MODEL + VOICES[speaker] + prompt).encode()).hexdigest()[:16] + ".wav")
         if cache.exists():
             shutil.copy(cache, out_wav)
             with wave.open(str(out_wav)) as w:
@@ -230,7 +230,7 @@ def gen_voice(text, speaker, out_wav):
         },
     }
     min_secs = 0.17 * len(text.split())  # a much shorter clip means the voice was cut off
-    for attempt in range(5):
+    for attempt in range(8):
         try:
             data = post(TTS_MODEL, payload)
             part = data["candidates"][0]["content"]["parts"][0]
@@ -247,10 +247,13 @@ def gen_voice(text, speaker, out_wav):
                 w.writeframes(pcm)
             if cache is not None:
                 shutil.copy(out_wav, cache)
+            time.sleep(8)  # stay under the per-minute limit of the voice service
             return secs
         except Exception as e:
             print(f"Voice failed ({e}) for {speaker}, attempt {attempt + 1}.", file=sys.stderr)
-            time.sleep(20 if "429" in str(e) else 5)
+            if any(c in str(e) for c in ("HTTP Error 400", "HTTP Error 403", "HTTP Error 404")):
+                break
+            time.sleep(30 if "429" in str(e) else 8)
     print(f"VOICE MISSING for {speaker}: {text}", file=sys.stderr)
     return None
 
@@ -801,6 +804,8 @@ def guest_sheet(assets, out):
 
 
 def main_intro():
+    global TTS_MODEL
+    TTS_MODEL = os.environ.get("INTRO_TTS_MODEL", "gemini-2.5-pro-preview-tts")
     """The welcome video: scripted narration, the three staff members and two guests."""
     work = ROOT / "build" / f"intro_{DAY}"
     work.mkdir(parents=True, exist_ok=True)
