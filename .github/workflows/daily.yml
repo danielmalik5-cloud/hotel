@@ -46,3 +46,17 @@ jobs:
           git add transcripts assets
           git commit -m "New hotel episode" || echo "Nothing new to save"
           git push
+
+      - name: Send the video to Telegram
+        continue-on-error: true
+        env:
+          BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          CHAT_ID: "8873549758"
+        run: |
+          f=$(ls -t videos/20*.mp4 | head -1)
+          echo "Sending $f"
+          curl -sS --fail-with-body -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendVideo" \
+            -F chat_id="${CHAT_ID}" \
+            -F supports_streaming=true \
+            -F caption="The Token Hotel - $(date -u +%F)" \
+            -F video=@"$f" > /dev/null
