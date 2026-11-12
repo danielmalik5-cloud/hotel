@@ -48,24 +48,31 @@ def call_claude(system, user_text):
     key = os.environ.get("ANTHROPIC_API_KEY", "")
     if not key:
         raise SystemExit("ANTHROPIC_API_KEY is not set.")
-    body = json.dumps({
-        "model": MODEL,
-        "max_tokens": 120,
-        "system": system,
-        "messages": [{"role": "user", "content": user_text}],
-    }).encode()
-    req = urllib.request.Request(API_URL, data=body, method="POST", headers={
-        "x-api-key": key,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
-    })
-    try:
-        with urllib.request.urlopen(req, timeout=60) as resp:
-            data = json.load(resp)
-    except urllib.error.HTTPError as err:
-        detail = err.read().decode(errors="replace")[:300]
-        raise SystemExit(f"API error {err.code}: {detail}")
-    return data["content"][0]["text"].strip().strip('"')
+    for attempt in range(3):
+        body = json.dumps({
+            "model": MODEL,
+            "max_tokens": 300 + 300 * attempt,
+            "system": system,
+            "messages": [{"role": "user", "content": user_text}],
+        }).encode()
+        req = urllib.request.Request(API_URL, data=body, method="POST", headers={
+            "x-api-key": key,
+            "anthropic-version": "2023-06-01",
+            "content-type": "application/json",
+        })
+        try:
+            with urllib.request.urlopen(req, timeout=60) as resp:
+                data = json.load(resp)
+        except urllib.error.HTTPError as err:
+            detail = err.read().decode(errors="replace")[:300]
+            raise SystemExit(f"API error {err.code}: {detail}")
+        text = "".join(b.get("text", "") for b in data.get("content", []) if isinstance(b, dict))
+        text = text.strip().strip('"').strip()
+        if text:
+            return text
+        print("Empty reply, retrying. stop_reason:", data.get("stop_reason"),
+              "blocks:", [b.get("type") for b in data.get("content", []) if isinstance(b, dict)])
+    raise SystemExit("The model returned no text three times in a row.")
 
 
 MOCK_LINES = {
