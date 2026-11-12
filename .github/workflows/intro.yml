@@ -1,0 +1,60 @@
+name: Make the intro video
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  intro:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install video tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg fonts-dejavu-core
+          pip install pillow
+
+      - name: Make the intro video
+        env:
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          INTRO: "1"
+          MAX_IMAGES: "12"
+        run: python3 video.py
+
+      - name: Keep the video for download
+        uses: actions/upload-artifact@v4
+        with:
+          name: intro-video
+          path: videos/*
+          retention-days: 14
+
+      - name: Save the new drawings
+        run: |
+          git config user.name "token-hotel-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add assets
+          git commit -m "New guest drawings" || echo "Nothing new to save"
+          git push
+
+      - name: Send to Telegram
+        continue-on-error: true
+        env:
+          BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          CHAT_ID: "8873549758"
+        run: |
+          curl -sS --fail-with-body -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto" \
+            -F chat_id="${CHAT_ID}" \
+            -F caption="New guests: Mr. Loop and Ms. Context" \
+            -F photo=@videos/guests_preview.png > /dev/null
+          f=$(ls -t videos/intro_*.mp4 | head -1)
+          curl -sS --fail-with-body -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendVideo" \
+            -F chat_id="${CHAT_ID}" \
+            -F supports_streaming=true \
+            -F width=1080 -F height=1920 \
+            -F duration="$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$f" | cut -d. -f1)" \
+            -F caption="The Token Hotel - intro" \
+            -F video=@"$f" > /dev/null
