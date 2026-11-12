@@ -279,7 +279,7 @@ GUESTS = {
     "Mr. Loop": ("a polite, old-fashioned gentleman robot guest: tall slim body of polished silver metal, "
                  "round head with a glowing warm yellow LED face with kind but slightly glazed eyes, a spinning circular arrow symbol on his chest, "
                  "burgundy red three-piece suit with a pocket watch chain, a small brown suitcase in one hand. "
-                 "Important: use NO green, teal, cyan or turquoise colors anywhere on the character"),
+                 "Important: use NO magenta, pink or purple colors anywhere on the character"),
     "Ms. Context": ("a dreamy, scatterbrained humanoid robot lady guest: orange and cream metal body, "
                     "oval head with a glowing LED face with wide confused eyes, a large floppy sun hat with a small sticky note on it, "
                     "yellow travel coat, holding a travel bag, a tiny question mark floating near her head"),
@@ -307,8 +307,13 @@ _images_made = 0
 new_assets = []
 
 
+def bg_of(name):
+    """Guests drawn from now on use a magenta background (a pink/blue-grey face cannot be confused with it)."""
+    return "magenta" if (name in GUESTS and name != "Ms. Context") else "green"
+
+
 def slug_of(name):
-    return name.replace(" ", "_") + ("_v2" if name == "Mr. Loop" else "")
+    return name.replace(" ", "_") + ("_v3" if name == "Mr. Loop" else "")
 
 
 def assets_dir():
@@ -375,12 +380,13 @@ def make_robot_images(d, name, desc):
     (d / "robots").mkdir(exist_ok=True)
     slug = slug_of(name)
     base = d / "robots" / f"{slug}_base.png"
+    bgname = "bright magenta (#FF00FF)" if bg_of(name) == "magenta" else "bright green (#00FF00)"
     gen_image(f"{STYLE}. Full body character, standing, facing the viewer, centered, whole body visible from "
-              f"head to feet, on a solid pure bright green (#00FF00) background with nothing else. "
+              f"head to feet, on a solid pure {bgname} background with nothing else. "
               f"Character: {desc}. {STATES['base']}", base)
     if base.exists():
         for state in ("talk", "blink"):
-            gen_image(f"Edit this image of the same character. {STATES[state]} Same green background, "
+            gen_image(f"Edit this image of the same character. {STATES[state]} Same {bgname.split(' ')[1]} background, "
                       "same size and position.", d / "robots" / f"{slug}_{state}.png", reference=base)
 
 
@@ -406,7 +412,7 @@ def make_guest_assets():
         make_robot_images(d, name, desc)
 
 
-def key_out_green(im):
+def key_out_green(im, mode="green"):
     """Remove the (greenish, maybe textured or shaded) background around a character.
 
     The model does not always paint pure green, so this finds greenish pixels that are
@@ -417,8 +423,14 @@ def key_out_green(im):
     small = full.resize((max(1, w // 2), max(1, h // 2)), Image.BILINEAR)
     small = small.filter(ImageFilter.MedianFilter(5)).filter(ImageFilter.GaussianBlur(1.5))
     r, g, b = small.split()
-    greenness = ImageChops.subtract(g, ImageChops.lighter(r, b))
-    mask = greenness.point(lambda v: 255 if v >= 8 else 0)
+    if mode == "magenta":
+        # background is pink/magenta: red and blue clearly above green
+        greenness = ImageChops.subtract(ImageChops.darker(r, b), g)
+        thr = 50
+    else:
+        greenness = ImageChops.subtract(g, ImageChops.lighter(r, b))
+        thr = 8
+    mask = greenness.point(lambda v: 255 if v >= thr else 0)
     # Only pixels that are also close to the real background colour (measured along the
     # border) count as background, so a grey-green face or suit is not eaten.
     try:
@@ -427,11 +439,11 @@ def key_out_green(im):
         gn = np.asarray(greenness, dtype=np.int16)
         edge = np.concatenate([arr[0], arr[-1], arr[:, 0], arr[:, -1]])
         edge_g = np.concatenate([gn[0], gn[-1], gn[:, 0], gn[:, -1]])
-        pick = edge[edge_g >= 8]
+        pick = edge[edge_g >= thr]
         if len(pick) > 20:
             ref = np.median(pick, axis=0)
             dist = np.sqrt(((arr - ref) ** 2).sum(axis=2))
-            near = Image.fromarray(((dist <= 95) * 255).astype("uint8"))
+            near = Image.fromarray(((dist <= (70 if mode == "magenta" else 95)) * 255).astype("uint8"))
             mask = ImageChops.multiply(mask, near.point(lambda v: 1 if v else 0)).point(lambda v: 255 if v else 0)
     except Exception as e:
         print("Background colour check skipped:", e, file=sys.stderr)
@@ -463,7 +475,7 @@ def load_robot(d, name):
         p = d / "robots" / f"{slug}_{st}.png"
         if not p.exists():
             return None
-        sp = key_out_green(Image.open(p))
+        sp = key_out_green(Image.open(p), bg_of(name))
         if st == "base":
             base_h = sp.height
         sp = sp.resize((max(1, int(sp.width * HEIGHT / base_h)), HEIGHT), Image.LANCZOS)
