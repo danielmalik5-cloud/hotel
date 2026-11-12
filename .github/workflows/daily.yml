@@ -58,5 +58,7 @@ jobs:
           curl -sS --fail-with-body -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendVideo" \
             -F chat_id="${CHAT_ID}" \
             -F supports_streaming=true \
+            -F width=1080 -F height=1920 \
+            -F duration="$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$f" | cut -d. -f1)" \
             -F caption="The Token Hotel - $(date -u +%F)" \
             -F video=@"$f" > /dev/null
