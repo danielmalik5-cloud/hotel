@@ -30,7 +30,7 @@ MOCK = os.environ.get("MOCK") == "1"
 
 RULES = (
     "You are an AI agent playing a character in a comedy scene set in a hotel. "
-    "Reply with ONLY your next spoken line: one or two short sentences, at most 18 words. "
+    "Reply with ONLY your next spoken line: one short sentence, at most 11 words. Use plain, everyday English, simple words, like a casual chat. "
     "No stage directions, no quotation marks, no name prefix. Stay in character. "
     "React to what was just said and move the scene forward. Keep it family friendly "
     "and never mention real people, brands or politics."
