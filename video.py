@@ -183,7 +183,7 @@ def overlay(name, role, text):
     for size in (68, 60, 52, 46):
         font = ImageFont.truetype(FONT_B, size)
         lines = wrap(d, text, font, W - 120)
-        if len(lines) * int(size * 1.22) <= 270:
+        if len(lines) * int(size * 1.22) <= 255:
             break
     y = 1590
     for ln in lines:
@@ -476,7 +476,7 @@ def camera(frame, ctx, t):
         z = 1.0 + 0.06 * t
         cx, cy = W / 2, H / 2
     else:
-        z = 1.38 + 0.08 * t
+        z = 1.2 + 0.06 * t
         cx, cy = ctx["focus_x"], 1000
     w0, h0 = W / z, H / z
     cx = min(max(cx, w0 / 2), W - w0 / 2)
@@ -608,7 +608,7 @@ def main():
         else:
             prev_cast = set()
         shot = "wide" if (idx % 3 == 1 or not speaker) else "close"
-        focus_x = SIDE_X[sides[speaker]] if speaker else W / 2
+        focus_x = (0.65 * SIDE_X[sides[speaker]] + 0.35 * W / 2) if speaker else W / 2
         ctx = {"place": place, "speaker": speaker, "cast": cast, "shot": shot, "focus_x": focus_x}
         return lambda i, n, level, blink: render_ai(assets, ctx, i, n, level, blink)
 
