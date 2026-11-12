@@ -2,7 +2,7 @@ name: Daily hotel episode
 
 on:
   schedule:
-    - cron: "0 6 * * *"   # every day at 06:00 UTC
+    - cron: 30 8 * * * # every day at 08:30 UTC
   workflow_dispatch: {}    # lets you also press a "Run" button by hand
 
 permissions:
