@@ -289,6 +289,18 @@ STATES = {
     "talk": "Change ONLY the mouth: wide open as if speaking. Keep everything else pixel-identical.",
     "blink": "Change ONLY the eyes: closed, as in a blink. Keep everything else pixel-identical.",
 }
+ANGLE_VIEWS = {
+    "lobby": {"b": "seen from the opposite side, looking back toward the grand entrance doors, armchairs along the left wall",
+              "c": "a closer view of the seating area with armchairs, a potted plant and a round rug, tall arched windows behind"},
+    "reception": {"b": "seen from the side, the long desk running diagonally, a grand staircase behind it",
+                  "c": "a closer view of the wall of room keys and the brass bell, the desk at the right"},
+    "bar": {"b": "seen from behind the bar counter looking out at the room, a few round tables and stools",
+            "c": "a closer view of the bar counter and the glowing bottles, stools in front, seen from the left"},
+    "hallway": {"b": "seen from the far end looking back toward the elevator, doors on both sides, no glowing door",
+                "c": "a side-angle view of the hallway, one door slightly open with warm light spilling out"},
+    "elevator": {"b": "inside the elevator looking out through the open doors at a lobby",
+                 "c": "seen from the side in a corridor, brass elevator doors half open, the round floor dial above"},
+}
 PLACE_FOR = {"Pierce": ["lobby", "hallway"], "Vex": ["bar"], "Madame Halloran": ["reception", "elevator"]}
 HEIGHT = 1000  # standard sprite height in pixels
 _images_made = 0
@@ -372,6 +384,22 @@ def make_robot_images(d, name, desc):
                       "same size and position.", d / "robots" / f"{slug}_{state}.png", reference=base)
 
 
+def make_angle_assets():
+    """Two extra camera angles per place, drawn as edits of the original picture."""
+    d = assets_dir()
+    (d / "places").mkdir(exist_ok=True)
+    for name, views in ANGLE_VIEWS.items():
+        base = d / "places" / f"{name}.png"
+        if not base.exists():
+            continue
+        for suffix, view in views.items():
+            gen_image(f"Edit this image: draw the SAME room again from a different camera angle: {view}. "
+                      "Keep exactly the same art style, colors, furniture, lamps and lighting. "
+                      "Vertical 9:16 composition, eye-level camera, the floor visible across the lower third, "
+                      "lower third calm and uncluttered. No people or characters, no text.",
+                      d / "places" / f"{name}_{suffix}.png", reference=base)
+
+
 def make_guest_assets():
     d = assets_dir()
     for name, desc in GUESTS.items():
@@ -391,6 +419,22 @@ def key_out_green(im):
     r, g, b = small.split()
     greenness = ImageChops.subtract(g, ImageChops.lighter(r, b))
     mask = greenness.point(lambda v: 255 if v >= 8 else 0)
+    # Only pixels that are also close to the real background colour (measured along the
+    # border) count as background, so a grey-green face or suit is not eaten.
+    try:
+        import numpy as np
+        arr = np.asarray(small, dtype=np.int16)
+        gn = np.asarray(greenness, dtype=np.int16)
+        edge = np.concatenate([arr[0], arr[-1], arr[:, 0], arr[:, -1]])
+        edge_g = np.concatenate([gn[0], gn[-1], gn[:, 0], gn[:, -1]])
+        pick = edge[edge_g >= 8]
+        if len(pick) > 20:
+            ref = np.median(pick, axis=0)
+            dist = np.sqrt(((arr - ref) ** 2).sum(axis=2))
+            near = Image.fromarray(((dist <= 95) * 255).astype("uint8"))
+            mask = ImageChops.multiply(mask, near.point(lambda v: 1 if v else 0)).point(lambda v: 255 if v else 0)
+    except Exception as e:
+        print("Background colour check skipped:", e, file=sys.stderr)
     sw, sh = mask.size
     seeds = [(x, 0) for x in range(0, sw, 12)] + [(x, sh - 1) for x in range(0, sw, 12)] + \
             [(0, y) for y in range(0, sh, 12)] + [(sw - 1, y) for y in range(0, sh, 12)]
@@ -446,12 +490,31 @@ def load_assets():
         left, top = (im.width - W) // 2, (im.height - H) // 2
         places[name] = im.crop((left, top, left + W, top + H))
         places_blur[name] = places[name].filter(ImageFilter.GaussianBlur(5))
+    for name in list(PLACES):  # optional extra camera angles
+        for suffix in ("b", "c"):
+            p = d / "places" / f"{name}_{suffix}.png"
+            if p.exists():
+                try:
+                    im = Image.open(p).convert("RGB")
+                    scale = max(W / im.width, H / im.height)
+                    im = im.resize((int(im.width * scale + 0.5), int(im.height * scale + 0.5)), Image.LANCZOS)
+                    left, top = (im.width - W) // 2, (im.height - H) // 2
+                    places[f"{name}_{suffix}"] = im.crop((left, top, left + W, top + H))
+                    places_blur[f"{name}_{suffix}"] = places[f"{name}_{suffix}"].filter(ImageFilter.GaussianBlur(5))
+                except Exception as e:
+                    print(f"Skipping angle {p.name}: {e}", file=sys.stderr)
     for name in ROBOTS:
         states = load_robot(d, name)
         if states is None:
             return None
         robots[name] = states
     return {"places": places, "places_blur": places_blur, "robots": robots}
+
+
+def pick_variant(assets, place, idx):
+    """Choose one of the available camera angles of a place, varying by day and by line."""
+    options = [place] + [f"{place}_{s}" for s in ("b", "c") if f"{place}_{s}" in assets["places"]]
+    return options[(idx // 2 + date.fromisoformat(DAY).toordinal()) % len(options)]
 
 
 _sprite_cache = {}
@@ -678,6 +741,32 @@ def main_intro():
     print(f"Intro saved: {out}. New drawings this run: {len(new_assets)}.")
 
 
+def angle_sheet(assets, out):
+    f = ImageFont.truetype(FONT_B, 34)
+    names = list(PLACES)
+    tw, th = 340, 604
+    sheet = Image.new("RGB", (3 * tw + 40, len(names) * (th + 60) + 20), (42, 31, 24))
+    d = ImageDraw.Draw(sheet)
+    for r, name in enumerate(names):
+        for c, key in enumerate((name, f"{name}_b", f"{name}_c")):
+            x, y = 10 + c * (tw + 10), 10 + r * (th + 60)
+            if key in assets["places"]:
+                sheet.paste(assets["places"][key].resize((tw, th), Image.LANCZOS), (x, y))
+            d.text((x + tw // 2, y + th + 30), key, font=f, fill=(230, 190, 110), anchor="mm")
+    sheet.save(out)
+
+
+def main_angles():
+    make_assets()
+    make_angle_assets()
+    assets = load_assets()
+    if assets is None:
+        sys.exit("Staff or place drawings are missing.")
+    (ROOT / "videos").mkdir(exist_ok=True)
+    angle_sheet(assets, ROOT / "videos" / "angles_preview.png")
+    print(f"Angles saved. New drawings this run: {len(new_assets)}.")
+
+
 def main():
     work = ROOT / "build" / DAY
     work.mkdir(parents=True, exist_ok=True)
@@ -729,6 +818,8 @@ def main():
         who = l["speaker"]
         places = PLACE_FOR.get(who, ["lobby"])
         place = places[(i // 3) % len(places)]
+        if assets is not None:
+            place = pick_variant(assets, place, i)
         scenes.append(make_scene(work, i, who, l["role"], l["line"], who,
                                  make_renderer(place, who, prev, i)))
         prev = who
@@ -749,4 +840,9 @@ def main():
 
 
 if __name__ == "__main__":
-    main_intro() if os.environ.get("INTRO") == "1" else main()
+    if os.environ.get("ANGLES") == "1":
+        main_angles()
+    elif os.environ.get("INTRO") == "1":
+        main_intro()
+    else:
+        main()
