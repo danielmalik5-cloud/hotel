@@ -204,36 +204,54 @@ def post(model, payload):
         return json.load(r)
 
 
+NARRATOR_STYLE = "Read this aloud as a calm, warm, steady storyteller, at an even pace: "
+
+
 def gen_voice(text, speaker, out_wav):
     if MOCK or not KEY:
         return None
+    import hashlib
+    cache = None
+    prompt = (NARRATOR_STYLE if speaker == "Narrator" else "") + text
+    if speaker == "Narrator":
+        # the narrator's lines are cached so the same line always sounds the same
+        cdir = ROOT / "assets" / "voices"
+        cdir.mkdir(parents=True, exist_ok=True)
+        cache = cdir / (hashlib.md5((VOICES[speaker] + prompt).encode()).hexdigest()[:16] + ".wav")
+        if cache.exists():
+            shutil.copy(cache, out_wav)
+            with wave.open(str(out_wav)) as w:
+                return w.getnframes() / w.getframerate()
     payload = {
-        "contents": [{"parts": [{"text": text}]}],
+        "contents": [{"parts": [{"text": prompt}]}],
         "generationConfig": {
             "responseModalities": ["AUDIO"],
             "speechConfig": {"voiceConfig": {"prebuiltVoiceConfig": {"voiceName": VOICES[speaker]}}},
         },
     }
-    for attempt in range(3):
+    min_secs = 0.17 * len(text.split())  # a much shorter clip means the voice was cut off
+    for attempt in range(5):
         try:
             data = post(TTS_MODEL, payload)
             part = data["candidates"][0]["content"]["parts"][0]
             pcm = base64.b64decode((part.get("inlineData") or part["inline_data"])["data"])
+            secs = len(pcm) / 2 / 24000
+            if secs < min_secs:
+                print(f"Voice too short ({secs:.1f}s) for {speaker}, retrying.", file=sys.stderr)
+                time.sleep(3)
+                continue
             with wave.open(str(out_wav), "wb") as w:
                 w.setnchannels(1)
                 w.setsampwidth(2)
                 w.setframerate(24000)
                 w.writeframes(pcm)
-            return len(pcm) / 2 / 24000
-        except urllib.error.HTTPError as e:
-            if e.code == 429 and attempt < 2:
-                time.sleep(20)
-                continue
-            print(f"Voice failed ({e.code}) for {speaker}.", file=sys.stderr)
-            return None
+            if cache is not None:
+                shutil.copy(out_wav, cache)
+            return secs
         except Exception as e:
-            print(f"Voice failed ({e}) for {speaker}.", file=sys.stderr)
-            return None
+            print(f"Voice failed ({e}) for {speaker}, attempt {attempt + 1}.", file=sys.stderr)
+            time.sleep(20 if "429" in str(e) else 5)
+    print(f"VOICE MISSING for {speaker}: {text}", file=sys.stderr)
     return None
 
 
@@ -815,7 +833,7 @@ def main_intro():
     out = ROOT / "videos" / f"intro_{DAY}.mp4"
     tmp = ROOT / "videos" / f"tmp_intro_{DAY}.mp4"
     subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", str(lst),
-                    "-c", "copy", str(tmp)], check=True)
+                    "-c:v", "copy", "-c:a", "aac", "-b:a", "128k", "-ar", "24000", "-af", "aresample=async=1", str(tmp)], check=True)
     tmp.rename(out)
     print(f"Intro saved: {out}. New drawings this run: {len(new_assets)}.")
 
@@ -918,7 +936,7 @@ def main():
     out = out_dir / f"{DAY}.mp4"
     tmp = out_dir / f"tmp_{DAY}.mp4"
     subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", str(lst),
-                    "-c", "copy", str(tmp)], check=True)
+                    "-c:v", "copy", "-c:a", "aac", "-b:a", "128k", "-ar", "24000", "-af", "aresample=async=1", str(tmp)], check=True)
     tmp.rename(out)
     print(f"Video saved: {out}. New drawings this run: {len(new_assets)}.")
 
