@@ -308,23 +308,33 @@ EXTRA_PLACES = {
 EXTRA_PLACE_FOR = {"Pierce": ["dining", "terrace"], "Madame Halloran": ["dining"], "Vex": ["terrace"]}
 ANGLE_VIEWS.update({
     "dining": {"b": "seen from the side, a long row of round tables set for dinner, a buffet table at the far end",
-               "c": "a closer view of one table by the window, a candle and a vase, the room softly blurred behind"},
+               "c": "a closer view of one table by the window, a candle and a vase, the room softly blurred behind",
+               "d": "seen from the grand arched doorway looking into the room, tables in the distance, the chandelier above",
+               "e": "a serving counter with a swinging kitchen door and a trolley, seen from the side, a few tables at the edge",
+               "f": "seen from a corner by the tall windows looking across the room, evening light, two close tables in the foreground"},
     "terrace": {"b": "seen from the stone balustrade looking back at the hotel with glowing windows, a few tables in front",
-                "c": "a cozy corner of the terrace with a sofa, a low table and hanging lamps"},
+                "c": "a cozy corner of the terrace with a sofa, a low table and hanging lamps",
+                "d": "seen from the stone steps by the hotel door looking out over the tables and the city lights",
+                "e": "a close view of one small table with two chairs and a lantern, the city lights softly blurred behind"},
 })
-ANGLE_SUFFIXES = ("b", "c", "d", "e")
-IGNORED_ANGLES = {"lobby_c", "reception_c", "bar_c", "elevator_c"}  # too similar to the original; replaced by newer ones
+ANGLE_SUFFIXES = ("b", "c", "d", "e", "f", "g")
+IGNORED_ANGLES = {"lobby_c", "reception_c", "bar_c", "elevator_c", "reception_d", "reception_e", "elevator_d",
+                  "dining_b", "dining_c", "terrace_b"}  # too similar to the original or not wanted; replaced by newer ones
 ANGLE_VIEWS["lobby"].update({
     "d": "the staircase corner of the lobby: a curved wooden staircase on the left, a cozy lounge with a sofa and a low table on the right",
     "e": "near the front entrance: a revolving brass door, a luggage cart and a coat stand, a wooden bench along the wall, seen from inside the lobby"})
 ANGLE_VIEWS["reception"].update({
     "d": "the waiting area next to the front desk: a leather sofa and two armchairs around a low table, the desk visible at the far side",
-    "e": "the front desk seen from the right side, a wall clock and mailboxes behind it, the open guest book on the counter in the foreground"})
+    "e": "the front desk seen from the right side, a wall clock and mailboxes behind it, the open guest book on the counter in the foreground",
+    "f": "seen from behind the front desk looking out at the lobby and the grand entrance doors, the edge of the desk and the brass bell in the foreground",
+    "g": "seen from the far left corner at a strong diagonal, the wall of room keys and the desk receding in perspective, a potted palm in the foreground"})
 ANGLE_VIEWS["bar"].update({
     "d": "a cozy lounge corner of the bar with round tables, leather armchairs and a small sofa, warm low lamps, the bar counter far in the background",
     "e": "the bar counter seen from the right side, glowing bottle shelves, a few stools, a booth with a table near a window"})
 ANGLE_VIEWS["elevator"].update({
-    "d": "seen from the right side in a corridor, brass elevator doors half open, the round floor dial above, a bench and a potted plant"})
+    "d": "seen from the right side in a corridor, brass elevator doors half open, the round floor dial above, a bench and a potted plant",
+    "e": "a wide upper-floor corridor with two brass elevators side by side, seen at a strong diagonal from the far right, patterned carpet",
+    "f": "seen at a strong diagonal from the far left, the brass elevator doors in perspective at the right edge, a brass mail slot and a framed painting on the left wall"})
 
 
 def angle_keys(name):
@@ -820,6 +830,8 @@ def angle_sheet(assets, out):
 
 
 def main_angles():
+    global MAX_IMAGES
+    MAX_IMAGES = max(MAX_IMAGES, 30)
     make_assets()
     make_angle_assets()
     assets = load_assets()
