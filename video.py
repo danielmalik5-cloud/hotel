@@ -46,7 +46,8 @@ IMAGE_MODEL = os.environ.get("IMAGE_MODEL", "gemini-2.5-flash-image")
 MAX_IMAGES = int(os.environ.get("MAX_IMAGES", "20"))
 API = "https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent"
 
-VOICES = {"Pierce": "Puck", "Vex": "Charon", "Madame Halloran": "Kore", "Narrator": "Orus"}
+VOICES = {"Pierce": "Puck", "Vex": "Charon", "Madame Halloran": "Kore", "Narrator": "Orus",
+          "Mr. Loop": "Fenrir", "Ms. Context": "Aoede"}
 FONT_B = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 FONT_S = "/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf"
 ST = 'stroke="#000" stroke-width="8" stroke-linejoin="round" stroke-linecap="round"'
@@ -274,6 +275,14 @@ ROBOTS = {
                         "silver hair bun made of fine metal wires, cat-eye glasses on a chain, "
                         "disapproving glowing LED face, hands clasped in front"),
 }
+GUESTS = {
+    "Mr. Loop": ("a polite, old-fashioned gentleman robot guest: tall slim body of polished silver and teal metal, "
+                 "round head with a glowing LED face with kind but slightly glazed eyes, a spinning circular arrow symbol on his chest, "
+                 "teal three-piece suit with a pocket watch chain, a small suitcase in one hand"),
+    "Ms. Context": ("a dreamy, scatterbrained humanoid robot lady guest: orange and cream metal body, "
+                    "oval head with a glowing LED face with wide confused eyes, a large floppy sun hat with a small sticky note on it, "
+                    "yellow travel coat, holding a travel bag, a tiny question mark floating near her head"),
+}
 STATES = {
     "base": "Neutral expression, mouth closed, eyes open.",
     "talk": "Change ONLY the mouth: wide open as if speaking. Keep everything else pixel-identical.",
@@ -342,15 +351,26 @@ def make_assets():
                   "Keep the lower third calm and uncluttered. No text except a door number if mentioned.",
                   d / "places" / f"{name}.png")
     for name, desc in ROBOTS.items():
-        slug = name.replace(" ", "_")
-        base = d / "robots" / f"{slug}_base.png"
-        gen_image(f"{STYLE}. Full body character, standing, facing the viewer, centered, whole body visible from "
-                  f"head to feet, on a solid pure bright green (#00FF00) background with nothing else. "
-                  f"Character: {desc}. {STATES['base']}", base)
-        if base.exists():
-            for state in ("talk", "blink"):
-                gen_image(f"Edit this image of the same character. {STATES[state]} Same green background, "
-                          "same size and position.", d / "robots" / f"{slug}_{state}.png", reference=base)
+        make_robot_images(d, name, desc)
+
+
+def make_robot_images(d, name, desc):
+    (d / "robots").mkdir(exist_ok=True)
+    slug = name.replace(" ", "_")
+    base = d / "robots" / f"{slug}_base.png"
+    gen_image(f"{STYLE}. Full body character, standing, facing the viewer, centered, whole body visible from "
+              f"head to feet, on a solid pure bright green (#00FF00) background with nothing else. "
+              f"Character: {desc}. {STATES['base']}", base)
+    if base.exists():
+        for state in ("talk", "blink"):
+            gen_image(f"Edit this image of the same character. {STATES[state]} Same green background, "
+                      "same size and position.", d / "robots" / f"{slug}_{state}.png", reference=base)
+
+
+def make_guest_assets():
+    d = assets_dir()
+    for name, desc in GUESTS.items():
+        make_robot_images(d, name, desc)
 
 
 def key_out_green(im):
@@ -386,6 +406,27 @@ def key_out_green(im):
     return out.crop(box) if box else out
 
 
+def load_robot(d, name):
+    slug = name.replace(" ", "_")
+    states = {}
+    base_h = None
+    for st in STATES:
+        p = d / "robots" / f"{slug}_{st}.png"
+        if not p.exists():
+            return None
+        sp = key_out_green(Image.open(p))
+        if st == "base":
+            base_h = sp.height
+        sp = sp.resize((max(1, int(sp.width * HEIGHT / base_h)), HEIGHT), Image.LANCZOS)
+        states[st] = sp
+    w = max(sp.width for sp in states.values())
+    for st, sp in list(states.items()):
+        canvas = Image.new("RGBA", (w, HEIGHT), (0, 0, 0, 0))
+        canvas.paste(sp, ((w - sp.width) // 2, HEIGHT - sp.height), sp)
+        states[st] = canvas
+    return states
+
+
 def load_assets():
     """Return {'places': {...}, 'robots': {...}} or None if anything is missing."""
     d = ROOT / "assets"
@@ -401,24 +442,9 @@ def load_assets():
         places[name] = im.crop((left, top, left + W, top + H))
         places_blur[name] = places[name].filter(ImageFilter.GaussianBlur(5))
     for name in ROBOTS:
-        slug = name.replace(" ", "_")
-        states = {}
-        base_h = None
-        for s in STATES:
-            p = d / "robots" / f"{slug}_{s}.png"
-            if not p.exists():
-                return None
-            sp = key_out_green(Image.open(p))
-            if s == "base":
-                base_h = sp.height
-            sp = sp.resize((max(1, int(sp.width * HEIGHT / base_h)), HEIGHT), Image.LANCZOS)
-            states[s] = sp
-        # align the three faces: same width, anchored bottom-centre
-        w = max(sp.width for sp in states.values())
-        for s, sp in list(states.items()):
-            canvas = Image.new("RGBA", (w, HEIGHT), (0, 0, 0, 0))
-            canvas.paste(sp, ((w - sp.width) // 2, HEIGHT - sp.height), sp)
-            states[s] = canvas
+        states = load_robot(d, name)
+        if states is None:
+            return None
         robots[name] = states
     return {"places": places, "places_blur": places_blur, "robots": robots}
 
@@ -580,6 +606,73 @@ def preview_sheets(assets, work):
     return p1, p2
 
 
+INTRO_SCRIPT = [
+    # (speaker, role, line, place, cast [(who, side, speaking)], shot)
+    ("Narrator", "", "Welcome to the Token Hotel. A hotel run entirely by AI agents.", "lobby", [], "wide"),
+    ("Narrator", "", "Meet Pierce, our porter. He apologizes for everything.", "lobby", [("Pierce", "L", False)], "wide"),
+    ("Pierce", "Porter", "Welcome! Sorry. Welcome again.", "lobby", [("Pierce", "L", True)], "close"),
+    ("Narrator", "", "Vex tends the bar. He has heard worse questions.", "bar", [("Vex", "R", False)], "wide"),
+    ("Vex", "Bartender", "Not many.", "bar", [("Vex", "R", True)], "close"),
+    ("Narrator", "", "Madame Halloran runs the front desk, and everyone behind it.", "reception", [("Madame Halloran", "L", False)], "wide"),
+    ("Madame Halloran", "Manager", "This is a respectable establishment.", "reception", [("Madame Halloran", "L", True)], "close"),
+    ("Narrator", "", "Guests check in from every corner of the cloud.", "lobby", [("Mr. Loop", "L", False), ("Ms. Context", "R", False)], "wide"),
+    ("Mr. Loop", "Guest", "Hello. Hello. Hello.", "lobby", [("Ms. Context", "R", False), ("Mr. Loop", "L", True)], "close"),
+    ("Ms. Context", "Guest", "Welcome back, uh... you.", "lobby", [("Mr. Loop", "L", False), ("Ms. Context", "R", True)], "close"),
+    ("Narrator", "", "Some doors lead nowhere. Don't ask about room four-oh-four.", "hallway", [], "wide"),
+    ("Narrator", "", "Every episode is improvised by AI agents. New stories every morning. Check in with us.", "lobby",
+     [("Pierce", "L", False), ("Madame Halloran", "R", False)], "wide"),
+]
+
+
+def guest_sheet(assets, out):
+    f = ImageFont.truetype(FONT_B, 40)
+    sheet = Image.new("RGB", (1080, 900), (42, 31, 24))
+    d = ImageDraw.Draw(sheet)
+    for g, name in enumerate(GUESTS):
+        d.text((270 + g * 540, 40), name, font=f, fill=(230, 190, 110), anchor="mm")
+        for k, state in enumerate(("base", "talk", "blink")):
+            sp = assets["robots"][name][state]
+            sp = sp.resize((int(sp.width * 700 / HEIGHT), 700), Image.LANCZOS)
+            sheet.paste(sp, (g * 540 + k * 170 + 20, 100), sp)
+    sheet.save(out)
+
+
+def main_intro():
+    """The welcome video: scripted narration, the three staff members and two guests."""
+    work = ROOT / "build" / f"intro_{DAY}"
+    work.mkdir(parents=True, exist_ok=True)
+    make_assets()
+    make_guest_assets()
+    assets = load_assets()
+    if assets is None:
+        sys.exit("Staff or place drawings are missing; cannot make the intro.")
+    d = ROOT / "assets"
+    for g in GUESTS:
+        states = load_robot(d, g)
+        if states is None:
+            sys.exit(f"The drawings of guest {g} are missing; cannot make the intro.")
+        assets["robots"][g] = states
+    (ROOT / "videos").mkdir(exist_ok=True)
+    guest_sheet(assets, ROOT / "videos" / "guests_preview.png")
+    scenes = []
+    for idx, (name, role, line, place, cast_spec, shot) in enumerate(INTRO_SCRIPT):
+        cast = [(who, side, speaking, True) for who, side, speaking in cast_spec]
+        speaker = next((w for w, _, sp in cast_spec if sp), None)
+        side = next((sd for w, sd, sp in cast_spec if sp), "L")
+        focus_x = (0.65 * SIDE_X[side] + 0.35 * W / 2) if speaker else W / 2
+        ctx = {"place": place, "speaker": speaker, "cast": cast, "shot": shot, "focus_x": focus_x}
+        renderer = (lambda c: (lambda i, n, level, blink: render_ai(assets, c, i, n, level, blink)))(ctx)
+        scenes.append(make_scene(work, idx, name, role, line, name, renderer, min_len=2.5))
+    lst = work / "list.txt"
+    lst.write_text("".join(f"file '{p.resolve()}'\n" for p in scenes))
+    out = ROOT / "videos" / f"intro_{DAY}.mp4"
+    tmp = ROOT / "videos" / f"tmp_intro_{DAY}.mp4"
+    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", str(lst),
+                    "-c", "copy", str(tmp)], check=True)
+    tmp.rename(out)
+    print(f"Intro saved: {out}. New drawings this run: {len(new_assets)}.")
+
+
 def main():
     work = ROOT / "build" / DAY
     work.mkdir(parents=True, exist_ok=True)
@@ -651,4 +744,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main_intro() if os.environ.get("INTRO") == "1" else main()
