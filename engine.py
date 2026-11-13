@@ -9,7 +9,8 @@ Environment variables:
   ANTHROPIC_API_KEY  - your key (set as a GitHub secret, never in this file)
   MOCK=1             - no API calls, canned lines (for testing)
   MAX_CALLS          - hard cap on API calls per run (default 16)
-  TURNS              - number of lines in the scene (default 9)
+  BEATS              - number of lines in the episode (default 12)
+  PREVIEW=1          - write a text preview only (preview.txt), touch nothing else
   MODEL              - model id (default claude-haiku-5-5)
 """
 import json
@@ -24,22 +25,40 @@ from pathlib import Path
 ROOT = Path(__file__).parent
 API_URL = "https://api.anthropic.com/v1/messages"
 MODEL = os.environ.get("MODEL", "claude-haiku-5-5")
-MAX_CALLS = int(os.environ.get("MAX_CALLS", "16"))
-TURNS = int(os.environ.get("TURNS", "9"))
+MAX_CALLS = int(os.environ.get("MAX_CALLS", "20"))
+BEATS = int(os.environ.get("BEATS", "12"))  # lines per episode (the old TURNS setting is ignored)
 MOCK = os.environ.get("MOCK") == "1"
 
 RULES = (
-    "You are an AI agent playing a character in a comedy scene set in a hotel. "
-    "Reply with ONLY your next spoken line: one short sentence, at most 11 words. Use plain, everyday English, simple words, like a casual chat. "
+    "You are an AI agent playing a character in a light comedy scene set in a hotel. "
+    "Reply with ONLY your next spoken line: one sentence, at most 16 words. Use plain, everyday English, simple words. "
+    "Be funny and concrete: say something specific, not just polite small talk. "
     "No stage directions, no quotation marks, no name prefix. Stay in character. "
-    "React to what was just said and move the scene forward. Keep it family friendly "
-    "and never mention real people, brands or politics."
+    "Pursue your own goal in this scene, react to what was just said, and move the story forward. "
+    "Never reveal your secret directly unless the scene forces you to. "
+    "Keep it family friendly and never mention real people, brands or politics."
+)
+
+PLANNER_RULES = (
+    "You are the story editor of a funny daily short video series called The Token Hotel, where AI agents work in a hotel. "
+    "You write a short episode PLAN, not the dialogue. The audience does not know yet how AI agents work together, "
+    "so the episode must show agent behavior in a funny, easy way: handing a task to another agent, asking another agent for "
+    "information, misunderstanding an instruction, forgetting context, getting stuck in a loop, or a request that fails. "
+    "Use at least two such moments. The tone is light and comedic. Structure: a strong hook, a problem, a complication, "
+    "a twist, and a punchline as the last beat. Keep it family friendly with no real people, brands or politics.\n"
+    "Reply with ONLY valid JSON, no markdown, in this shape:\n"
+    '{"title": "short episode title", "premise": "one plain sentence, at most 20 words, that sets up tonight\'s story", '
+    '"goals": {"<character>": "what this character secretly wants in this episode"}, '
+    '"secrets": {"<character>": "one small secret or hidden problem, or empty string"}, '
+    '"beats": [{"speaker": "<character>", "intent": "what happens in this beat, one short sentence"}]}\n'
+    "There must be exactly the requested number of beats. Use only the characters listed in the cast. "
+    "Every character in the cast speaks at least twice. No character speaks more than twice in a row."
 )
 
 calls_made = 0
 
 
-def call_claude(system, user_text):
+def call_claude(system, user_text, max_tokens=300):
     """One API call. Stops the whole run if the daily cap is reached."""
     global calls_made
     if calls_made >= MAX_CALLS:
@@ -51,7 +70,7 @@ def call_claude(system, user_text):
     for attempt in range(3):
         body = json.dumps({
             "model": MODEL,
-            "max_tokens": 300 + 300 * attempt,
+            "max_tokens": max_tokens + 300 * attempt,
             "system": system,
             "messages": [{"role": "user", "content": user_text}],
         }).encode()
@@ -79,6 +98,8 @@ MOCK_LINES = {
     "Pierce": ["Welcome! Sorry. Welcome again.", "Sorry, I think I dropped the situation.", "I will fetch it. Sorry. Fetching."],
     "Vex": ["I have heard worse questions. Not many.", "May I suggest a Context Overflow. Nobody finishes it.", "Sure. Why not. Everything is fine."],
     "Madame Halloran": ["This is a respectable establishment.", "Pierce, please stop apologizing to the furniture.", "Nobody panic. I am panicking on everyone's behalf."],
+    "Mr. Loop": ["Hello. Hello. Hello.", "Is the room ready? Is the room ready?"],
+    "Ms. Context": ["Welcome back, uh... you.", "Wait, what was I asking?"],
 }
 
 
@@ -87,44 +108,151 @@ def mock_line(name, i):
     return options[i % len(options)]
 
 
-def build_scene(chars, situation, order, turns):
+def fallback_plan(situation, cast, n):
+    """Used if the planner fails: a plain round-robin scene, like the old engine."""
+    return {"title": "A night at the hotel", "premise": situation, "goals": {}, "secrets": {},
+            "beats": [{"speaker": cast[i % len(cast)], "intent": "Continue the scene."} for i in range(n)]}
+
+
+def parse_json(text):
+    text = text.strip()
+    if text.startswith("```"):
+        text = text.strip("`")
+        text = text[text.find("{"):]
+    start, end = text.find("{"), text.rfind("}")
+    return json.loads(text[start:end + 1])
+
+
+def check_plan(plan, cast, n):
+    beats = plan["beats"]
+    if not isinstance(beats, list) or len(beats) < 8:
+        raise ValueError("too few beats")
+    beats = beats[:n]
+    fixed = []
+    for i, b in enumerate(beats):
+        who = b.get("speaker")
+        if who not in cast:
+            who = cast[i % len(cast)]
+        fixed.append({"speaker": who, "intent": str(b.get("intent", "")).strip()})
+    missing = [c for c in cast if c not in {b["speaker"] for b in fixed}]
+    for k, c in enumerate(missing):  # every cast member speaks at least once
+        fixed[1 + k * 2]["speaker"] = c
+    plan["beats"] = fixed
+    plan["goals"] = {k: str(v) for k, v in (plan.get("goals") or {}).items() if k in cast}
+    plan["secrets"] = {k: str(v) for k, v in (plan.get("secrets") or {}).items() if k in cast and v}
+    plan["title"] = str(plan.get("title", "")).strip() or "A night at the hotel"
+    plan["premise"] = str(plan.get("premise", "")).strip()
+    if not plan["premise"]:
+        raise ValueError("no premise")
+    return plan
+
+
+def plan_episode(chars, situation, guest, mystery, yesterday, n):
+    cast = list(chars["staff"]) + ([guest] if guest else [])
+    people = "\n".join(f"- {c} ({chars['all'][c]['role']}): {chars['all'][c]['persona']}" for c in cast)
+    user_text = (
+        f"Setting: {chars['hotel']}\n\nCast:\n{people}\n\n"
+        f"Seed idea for tonight (you may bend it): {situation}\n"
+        f"Number of beats: {n}\n"
+        + ("Tonight includes a small, light mystery or odd clue, solved lightly or left as a teaser.\n" if mystery
+           else "Tonight is pure comedy, no mystery.\n")
+        + (f"Yesterday's episode, for an optional small callback: {yesterday}\n" if yesterday else "")
+        + "Write the plan."
+    )
+    for attempt in range(2):
+        try:
+            plan = check_plan(parse_json(call_claude(PLANNER_RULES, user_text, 1500)), cast, n)
+            plan["cast"] = cast
+            return plan
+        except (ValueError, KeyError, TypeError) as e:
+            print(f"Plan not usable ({e}), attempt {attempt + 1}.", file=sys.stderr)
+    plan = fallback_plan(situation, cast, n)
+    plan["cast"] = cast
+    return plan
+
+
+def build_scene(chars, plan, situation_text):
     transcript = []
-    for i in range(turns):
-        name = order[i % len(order)]
+    for i, beat in enumerate(plan["beats"]):
+        name = beat["speaker"]
         if MOCK:
-            line = mock_line(name, i // len(order))
+            line = mock_line(name, sum(1 for t in transcript if t["speaker"] == name))
         else:
             history = "\n".join(f"{t['speaker']}: {t['line']}" for t in transcript) or "(the scene is just starting)"
-            system = f"{RULES}\n\nSetting: {chars['hotel']}\n\nYour character: {name}, {chars[name]['role']}. {chars[name]['persona']}"
+            me = chars["all"][name]
+            mine = ""
+            if plan["goals"].get(name):
+                mine += f"\nYour goal in this scene: {plan['goals'][name]}"
+            if plan["secrets"].get(name):
+                mine += f"\nYour secret: {plan['secrets'][name]}"
+            system = f"{RULES}\n\nSetting: {chars['hotel']}\n\nYour character: {name}, {me['role']}. {me['persona']}{mine}"
+            last = i == len(plan["beats"]) - 1
             user_text = (
-                f"Tonight's situation: {situation}\n\n"
+                f"Tonight's story: {situation_text}\n\n"
                 f"Scene so far:\n{history}\n\n"
-                f"Now write {name}'s next line."
+                f"What this moment should do: {beat['intent']}\n"
+                + ("This is the LAST line of the episode: make it a punchline.\n" if last else "")
+                + f"Now write {name}'s next line."
             )
             line = call_claude(system, user_text)
-        transcript.append({"speaker": name, "role": chars[name]["role"], "line": line})
+        transcript.append({"speaker": name, "role": chars["all"][name]["role"], "line": line})
     return transcript
+
+
+def yesterday_summary(out_dir, today):
+    try:
+        index = json.loads((out_dir / "index.json").read_text())
+        prev = [d for d in index if d < today]
+        if not prev:
+            return ""
+        ep = json.loads((out_dir / f"{prev[-1]}.json").read_text(encoding="utf-8"))
+        last = ep["lines"][-1]
+        return f"\"{ep.get('title', '')}\": {ep.get('situation', '')} It ended with {last['speaker']} saying: {last['line']}"
+    except Exception:
+        return ""
 
 
 def main():
     config = json.loads((ROOT / "characters.json").read_text(encoding="utf-8"))
-    chars = {"hotel": config["hotel"], **config["characters"]}
-    order = config["speaking_order_hint"]
+    guests = config.get("guests", {})
+    chars = {"hotel": config["hotel"], "staff": list(config["characters"]),
+             "all": {**config["characters"], **guests}}
+    preview = os.environ.get("PREVIEW") == "1"
     today = date.today().isoformat()
-    rng = random.Random(today)  # same day, same situation
+    rng = random.Random(f"{today}-{random.random()}" if preview else today)  # same day, same episode
     situation = rng.choice(config["situations"])
-
-    transcript = build_scene(chars, situation, order, TURNS)
-
+    guest = rng.choice(sorted(guests)) if guests and rng.random() < 0.8 else None
+    mystery = rng.random() < 0.2
     out_dir = ROOT / "transcripts"
+    yesterday = yesterday_summary(out_dir, today)
+
+    if MOCK:
+        plan = fallback_plan(situation, chars["staff"] + ([guest] if guest else []), BEATS)
+        plan["cast"] = chars["staff"] + ([guest] if guest else [])
+    else:
+        plan = plan_episode(chars, situation, guest, mystery, yesterday, BEATS)
+    transcript = build_scene(chars, plan, plan["premise"])
+
+    if preview:
+        lines = [f"{plan['title']}", f"{plan['premise']}", f"Cast: {', '.join(plan['cast'])}"
+                 + ("  (mystery tonight)" if mystery else ""), ""]
+        lines += [f"{t['speaker']}: {t['line']}" for t in transcript]
+        lines += ["", "Goals: " + "; ".join(f"{k}: {v}" for k, v in plan["goals"].items())]
+        (ROOT / "preview.txt").write_text("\n".join(lines), encoding="utf-8")
+        print("\n".join(lines))
+        return 0
+
     out_dir.mkdir(exist_ok=True)
     episode = {
         "date": today,
-        "situation": situation,
+        "title": plan["title"],
+        "situation": plan["premise"],
+        "guest": guest,
+        "plan": {"goals": plan["goals"], "secrets": plan["secrets"], "beats": plan["beats"]},
         "mock": MOCK,
         "model": "mock" if MOCK else MODEL,
         "lines": transcript,
-        "note": "Every line is generated by an AI agent. The daily situation is chosen by a human-written list.",
+        "note": "Every line is generated by an AI agent. The seed idea comes from a human-written list; the episode plan is written by an AI editor.",
     }
     (out_dir / f"{today}.json").write_text(json.dumps(episode, ensure_ascii=False, indent=2), encoding="utf-8")
 
