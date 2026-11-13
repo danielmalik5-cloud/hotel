@@ -25,7 +25,7 @@ from pathlib import Path
 ROOT = Path(__file__).parent
 API_URL = "https://api.anthropic.com/v1/messages"
 MODEL = os.environ.get("MODEL", "claude-haiku-5-5")
-MAX_CALLS = int(os.environ.get("MAX_CALLS", "20"))
+MAX_CALLS = max(int(os.environ.get("MAX_CALLS", "30")), 30)  # room for the plan, 12 lines and a few shortenings
 BEATS = int(os.environ.get("BEATS", "12"))  # lines per episode (the old TURNS setting is ignored)
 MOCK = os.environ.get("MOCK") == "1"
 
@@ -46,19 +46,21 @@ PLANNER_RULES = (
     "information, misunderstanding an instruction, forgetting context, getting stuck in a loop, or a request that fails. "
     "Use at least two such moments. The tone is light and comedic. Structure: a strong hook, a problem, a complication, "
     "a twist, and a punchline as the last beat. Keep it family friendly with no real people, brands or politics.\n"
-    "Reply with ONLY valid JSON, no markdown, in this shape:\n"
-    '{"title": "short episode title", "premise": "one plain sentence, at most 20 words, that sets up tonight\'s story", '
-    '"goals": {"<character>": "what this character secretly wants in this episode"}, '
-    '"secrets": {"<character>": "one small secret or hidden problem, or empty string"}, '
-    '"beats": [{"speaker": "<character>", "intent": "what happens in this beat, one short sentence"}]}\n'
-    "There must be exactly the requested number of beats. Use only the characters listed in the cast. "
-    "Every character in the cast speaks at least twice. No character speaks more than twice in a row."
+    "Reply with ONLY plain text lines in exactly this format, nothing else, no markdown:\n"
+    "TITLE: short episode title\n"
+    "PREMISE: one plain sentence, at most 20 words, that sets up tonight's story\n"
+    "GOAL <character>: what this character secretly wants in this episode (one line per character)\n"
+    "SECRET <character>: one small secret or hidden problem (optional, only for some characters)\n"
+    "BEAT 1 | <character> | what happens in this beat, one short sentence\n"
+    "BEAT 2 | <character> | ...\n"
+    "There must be exactly the requested number of BEAT lines. Use only the characters listed in the cast, "
+    "spelled exactly as listed. Every character in the cast speaks at least twice. No character speaks more than twice in a row."
 )
 
 calls_made = 0
 
 
-def call_claude(system, user_text, max_tokens=300):
+def call_claude(system, user_text, max_tokens=600):
     """One API call. Stops the whole run if the daily cap is reached."""
     global calls_made
     if calls_made >= MAX_CALLS:
@@ -114,13 +116,30 @@ def fallback_plan(situation, cast, n):
             "beats": [{"speaker": cast[i % len(cast)], "intent": "Continue the scene."} for i in range(n)]}
 
 
-def parse_json(text):
-    text = text.strip()
-    if text.startswith("```"):
-        text = text.strip("`")
-        text = text[text.find("{"):]
-    start, end = text.find("{"), text.rfind("}")
-    return json.loads(text[start:end + 1])
+def parse_plan(text, cast):
+    """Read the plain-text plan. Raises ValueError if it has no usable beats."""
+    import re
+    plan = {"title": "", "premise": "", "goals": {}, "secrets": {}, "beats": []}
+    for raw in text.splitlines():
+        line = raw.strip().lstrip("-*# ").strip()
+        m = re.match(r"(?i)^TITLE\s*:\s*(.+)$", line)
+        if m:
+            plan["title"] = m.group(1).strip().strip('"')
+            continue
+        m = re.match(r"(?i)^PREMISE\s*:\s*(.+)$", line)
+        if m:
+            plan["premise"] = m.group(1).strip().strip('"')
+            continue
+        m = re.match(r"(?i)^(GOAL|SECRET)\s+(.+?)\s*:\s*(.+)$", line)
+        if m:
+            who = next((c for c in cast if c.lower() == m.group(2).strip().lower()), None)
+            if who:
+                plan["goals" if m.group(1).upper() == "GOAL" else "secrets"][who] = m.group(3).strip()
+            continue
+        m = re.match(r"(?i)^BEAT\s*\d*\s*[|:]\s*(.+?)\s*\|\s*(.+)$", line)
+        if m:
+            plan["beats"].append({"speaker": m.group(1).strip(), "intent": m.group(2).strip()})
+    return plan
 
 
 def check_plan(plan, cast, n):
@@ -130,7 +149,7 @@ def check_plan(plan, cast, n):
     beats = beats[:n]
     fixed = []
     for i, b in enumerate(beats):
-        who = b.get("speaker")
+        who = next((c for c in cast if c.lower() == str(b.get("speaker", "")).strip().lower()), None)
         if who not in cast:
             who = cast[i % len(cast)]
         fixed.append({"speaker": who, "intent": str(b.get("intent", "")).strip()})
@@ -161,10 +180,10 @@ def plan_episode(chars, situation, guest, mystery, yesterday, n):
     )
     for attempt in range(2):
         try:
-            plan = check_plan(parse_json(call_claude(PLANNER_RULES, user_text, 1500)), cast, n)
+            plan = check_plan(parse_plan(call_claude(PLANNER_RULES, user_text, 3000), cast), cast, n)
             plan["cast"] = cast
             return plan
-        except (ValueError, KeyError, TypeError) as e:
+        except (ValueError, KeyError, TypeError, AttributeError) as e:
             print(f"Plan not usable ({e}), attempt {attempt + 1}.", file=sys.stderr)
     plan = fallback_plan(situation, cast, n)
     plan["cast"] = cast
@@ -195,6 +214,9 @@ def build_scene(chars, plan, situation_text):
                 + f"Now write {name}'s next line."
             )
             line = call_claude(system, user_text)
+            if len(line.split()) > 18:  # the model sometimes ignores the length limit: ask once for a shorter version
+                line = call_claude(system, user_text + f"\nYour draft was too long: {line}\n"
+                                   "Rewrite it in at most 16 words, keeping the joke. Reply with only the line.")
         transcript.append({"speaker": name, "role": chars["all"][name]["role"], "line": line})
     return transcript
 
