@@ -964,39 +964,68 @@ DOLLHOUSE_PROMPTS = {
         "numbered 404. Middle floor: a cozy bar with glowing bottles, brass taps and empty stools. Ground floor: a grand lobby "
         "with a reception desk and brass lamps. Thin wall dividers between floors, warm golden light, small cozy details. "
         "No people, no characters, no text except the door number."),
-    "dollhouse_b": (
-        f"{STYLE}. Vertical 9:16 composition. A top-down floor plan of the ground floor of a vintage hotel, seen from directly "
-        "above with the roof removed, like a doll house: a grand lobby in the middle with a checkered marble floor, a cozy bar "
-        "at one side with round tables and stools, a reception desk, a long red-carpet hallway with many doors, and a small "
-        "elevator. Warm light, tiny cozy details. No people, no characters, no text."),
+    "dollhouse_c": (
+        f"{STYLE}. Vertical 9:16 composition. A top-down view of a vintage hotel seen from directly above with the roof "
+        "removed, like a doll house. Inside: a grand lobby with a checkered marble floor and a reception desk, a cozy bar "
+        "with round tables and stools, a long red-carpet hallway with many doors, a small elevator. Along one side a large "
+        "wooden terrace with cafe tables, striped umbrellas, string lights and potted plants. Around the whole hotel a "
+        "lively garden: many round green trees seen from above, trimmed hedges, flower beds, a small fountain, gravel paths "
+        "and a lawn. Warm light, tiny cozy details. No people, no characters, no text."),
 }
-# camera path: (seconds, zoom, centre x as share of width, centre y as share of height)
-DOLLHOUSE_PATH = [(0, 1.0, 0.5, 0.5), (3, 1.12, 0.5, 0.5), (5.2, 1.9, 0.62, 0.50), (8, 1.95, 0.62, 0.50),
-                  (10.2, 1.9, 0.40, 0.78), (13, 1.95, 0.40, 0.78), (15.2, 1.9, 0.5, 0.22), (18, 1.95, 0.5, 0.22),
-                  (20, 1.0, 0.5, 0.5)]
 DOLLHOUSE_TEXT = [
-    "Welcome to the Token Hotel. Three floors. Zero humans.",
-    "On the middle floor, Vex is polishing the same glass again.",
+    "Welcome to the Token Hotel. Zero humans. Plenty of robots.",
+    "In the bar, Vex is polishing the same glass again.",
     "In the lobby, Pierce is apologizing to a lamp.",
-    "And somewhere on the top floor, room 404 is waiting.",
+    "And somewhere upstairs, room 404 is waiting.",
 ]
 
 
-def dollhouse_cam(t):
-    p = DOLLHOUSE_PATH
-    if t <= p[0][0]:
-        return p[0][1:]
-    for a, b in zip(p, p[1:]):
+def find_floor_bands(img):
+    """Floors of the cutaway as (top, bottom) pixel rows, found from the dark dividing bars."""
+    g = img.convert("L").crop((int(img.width * 0.15), 0, int(img.width * 0.85), img.height))
+    g = g.point(lambda v: 255 if v < 45 else 0).resize((1, img.height), Image.BOX)
+    rows = [i for i, v in enumerate(g.getdata()) if v > 0.85 * 255]
+    bars, s0, p0 = [], None, None
+    for r in rows:
+        if s0 is None:
+            s0 = p0 = r
+        elif r - p0 <= 3:
+            p0 = r
+        else:
+            bars.append((s0, p0)); s0 = p0 = r
+    if s0 is not None:
+        bars.append((s0, p0))
+    bars = [x for x in bars if x[1] - x[0] >= 6 and 0.08 * img.height < x[0] < 0.97 * img.height]
+    bands, prev = [], 0
+    for b0, b1 in bars:
+        if b0 - prev > 0.08 * img.height:
+            bands.append((prev, b0))
+        prev = b1
+    if len(bands) < 3:  # detection failed: three equal floors
+        t = img.height // 3
+        bands = [(0, t), (t, 2 * t), (2 * t, img.height)]
+    return bands
+
+
+def ease(k):
+    k = min(1.0, max(0.0, k))
+    return k * k * k * (k * (k * 6 - 15) + 10)  # smootherstep: gentle start and stop
+
+
+def dollhouse_cam(t, path):
+    if t <= path[0][0]:
+        return path[0][1:]
+    for a, b in zip(path, path[1:]):
         if t <= b[0]:
-            k = (t - a[0]) / (b[0] - a[0])
-            k = k * k * (3 - 2 * k)  # smooth start and stop
+            k = ease((t - a[0]) / (b[0] - a[0]))
             return tuple(a[j] + (b[j] - a[j]) * k for j in (1, 2, 3))
-    return p[-1][1:]
+    return path[-1][1:]
 
 
 def main_dollhouse():
-    global MAX_IMAGES
+    global MAX_IMAGES, FPS
     MAX_IMAGES = max(MAX_IMAGES, 6)
+    FPS = 30  # smooth camera moves
     work = ROOT / "build" / f"dollhouse_{DAY}"
     work.mkdir(parents=True, exist_ok=True)
     make_assets()
@@ -1018,27 +1047,42 @@ def main_dollhouse():
     im = im.resize((int(im.width * scale + 0.5), int(im.height * scale + 0.5)), Image.LANCZOS)
     left, top = (im.width - W) // 2, (im.height - H) // 2
     bg = im.crop((left, top, left + W, top + H)).convert("RGBA")
-    # (who, feet y as share of height, x as share of width at start, x at end of the 20 seconds)
-    cast = [("Vex", 0.60, 0.66, 0.60), ("Pierce", 0.90, 0.22, 0.52), ("Madame Halloran", 0.90, 0.80, 0.80)]
-    seg = 5.0
+    bands = find_floor_bands(bg)
+    print("Floor bands:", bands)
+    hall, bar, lobby = bands[0], bands[-2], bands[-1]
+    Z = 1.8
+    h0 = H / Z
+
+    def cam_y(band):  # put the floor in the upper-middle, above the caption bar
+        return ((band[0] + band[1]) / 2 + 0.15 * h0) / H
+
+    path = [(0, 1.0, 0.5, 0.5), (2.2, Z, 0.5, cam_y(lobby)),
+            (5.0, Z, 0.58, cam_y(bar)), (8.0, Z, 0.58, cam_y(bar)),
+            (11.0, Z, 0.42, cam_y(lobby)), (14.0, Z, 0.42, cam_y(lobby)),
+            (17.0, Z, 0.5, cam_y(hall)), (20.0, Z, 0.5, cam_y(hall)),
+            (22.5, 1.0, 0.5, 0.5)]
+    cast = [("Vex", bar, 0.70, 0.62), ("Pierce", lobby, 0.30, 0.46), ("Madame Halloran", lobby, 0.80, 0.80)]
+    seg = 5.6
     scenes = []
     for k, text in enumerate(DOLLHOUSE_TEXT):
         def renderer(i, n, level, blink, k=k):
             t = k * seg + i / FPS
             frame = bg.copy()
-            for who, fy, x0, x1 in cast:
-                kk = min(1.0, t / 20.0)
+            for who, band, x0, x1 in cast:
+                bh = band[1] - band[0]
+                fy = band[1] - 0.10 * bh
+                kk = min(1.0, t / 22.0)
                 cx = (x0 + (x1 - x0) * kk) * W
-                canvas, pad_h, sp_w = sprite(assets, who, "blink" if blink else "base", 0.26)
+                canvas, pad_h, sp_w = sprite(assets, who, "blink" if blink else "base", 0.72 * bh / HEIGHT)
                 bob = 3 * math.sin(2 * math.pi * (t * 0.8 + x0))
                 sh = shadow(sp_w)
-                frame.alpha_composite(sh, (int(cx - sh.width / 2), int(fy * H - sh.height / 2 - 4)))
-                frame.alpha_composite(canvas, (int(cx - canvas.width / 2), int(fy * H - canvas.height + bob)))
-            z, cxs, cys = dollhouse_cam(t)
-            w0, h0 = W / z, H / z
+                frame.alpha_composite(sh, (int(cx - sh.width / 2), int(fy - sh.height / 2 - 4)))
+                frame.alpha_composite(canvas, (int(cx - canvas.width / 2), int(fy - canvas.height + bob)))
+            z, cxs, cys = dollhouse_cam(t, path)
+            w0, h1 = W / z, H / z
             cx = min(max(cxs * W, w0 / 2), W - w0 / 2)
-            cy = min(max(cys * H, h0 / 2), H - h0 / 2)
-            frame = frame.resize((W, H), Image.BICUBIC, box=(cx - w0 / 2, cy - h0 / 2, cx + w0 / 2, cy + h0 / 2))
+            cy = min(max(cys * H, h1 / 2), H - h1 / 2)
+            frame = frame.resize((W, H), Image.BICUBIC, box=(cx - w0 / 2, cy - h1 / 2, cx + w0 / 2, cy + h1 / 2))
             return Image.alpha_composite(frame, vignette())
         scenes.append(make_scene(work, k, "Narrator", "", text, None, renderer, min_len=seg - 0.5))
     lst = work / "list.txt"
