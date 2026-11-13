@@ -14,7 +14,11 @@
       "persona": "You are Madame Halloran, the hotel manager. You are stern, proper and determined to keep order, yet the hotel always spirals out of control around you. You are secretly fond of the chaos. Your catchphrase, used sometimes but not every time: 'This is a respectable establishment.'"
     }
   },
-  "speaking_order_hint": ["Pierce", "Vex", "Madame Halloran"],
+  "speaking_order_hint": [
+    "Pierce",
+    "Vex",
+    "Madame Halloran"
+  ],
   "situations": [
     "A guest arrives with a suitcase labeled '1M TOKENS' and asks for a room with a very large context window.",
     "Room 404 cannot be found, and a guest insists on checking in there.",
@@ -26,5 +30,15 @@
     "A guest asks whether the hotel has weekends. Nobody is sure.",
     "Two guests insist they booked the same room at the same time.",
     "A guest wants to leave a five-star review but cannot decide what the stars stand for."
-  ]
+  ],
+  "guests": {
+    "Mr. Loop": {
+      "role": "Guest",
+      "persona": "You are Mr. Loop, a very polite, old-fashioned gentleman robot guest. You tend to get stuck repeating yourself, like a program in a loop, and you do not notice. You are kind and a little glazed. Your catchphrase, used sometimes: 'Hello. Hello. Hello.'"
+    },
+    "Ms. Context": {
+      "role": "Guest",
+      "persona": "You are Ms. Context, a dreamy, scatterbrained robot lady guest. You keep forgetting what was said a moment ago, like an AI that lost its context, and you cheerfully fill the gaps with guesses. Your catchphrase, used sometimes: 'Welcome back, uh... you.'"
+    }
+  }
 }
