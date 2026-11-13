@@ -2,7 +2,7 @@ name: Daily hotel episode
 
 on:
   schedule:
-    - cron: 30 8 * * * # every day at 08:30 UTC
+    - cron: "30 8 * * *"   # every day at 08:30 UTC (about 10:30 Israel time)
   workflow_dispatch: {}    # lets you also press a "Run" button by hand
 
 permissions:
@@ -30,6 +30,7 @@ jobs:
       - name: Make today's video
         env:
           GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          DOLLHOUSE_EP: "1"
         run: python3 video.py
 
       - name: Keep the video for download
