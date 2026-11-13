@@ -39,7 +39,7 @@ jobs:
           BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           CHAT_ID: "8873549758"
         run: |
-          for p in videos/dollhouse_a.png videos/dollhouse_b.png; do
+          for p in videos/dollhouse_a.png videos/dollhouse_c.png; do
             curl -sS --fail-with-body -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto" \
               -F chat_id="${CHAT_ID}" -F caption="$p" -F photo=@"$p" > /dev/null
           done
