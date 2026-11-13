@@ -48,7 +48,8 @@ PLANNER_RULES = (
     "information, misunderstanding an instruction, forgetting context, getting stuck in a loop, or a request that fails. "
     "Use at least two such moments. The story must be easy to follow for a viewer who knows nothing: introduce every object "
     "and problem in plain words before it is used again, keep to ONE clear problem, and make the last beat a clear funny "
-    "payoff that solves or twists that problem. The tone is light and comedic. Structure: a strong hook, a problem, a complication, "
+    "payoff that delivers what the problem was about, in a literal or absurd way (for example the guest finally gets exactly what "
+    "they asked for, but in a silly form). The tone is light and comedic. Structure: a strong hook, a problem, a complication, "
     "a twist, and a punchline as the last beat. Keep it family friendly with no real people, brands or politics.\n"
     "Reply with ONLY plain text lines in exactly this format, nothing else, no markdown:\n"
     "TITLE: short episode title\n"
@@ -57,7 +58,7 @@ PLANNER_RULES = (
     "SECRET <character>: one small secret or hidden problem (optional, only for some characters)\n"
     "BEAT 1 | <character> | what happens in this beat, one short sentence\n"
     "BEAT 2 | <character> | ...\n"
-    "There must be exactly the requested number of BEAT lines. Use only the characters listed in the cast, "
+    "There must be exactly the requested number of BEAT lines: count them, the last one must be the requested number.  Use only the characters listed in the cast, "
     "spelled exactly as listed. Every character in the cast speaks at least twice. No character speaks more than twice in a row."
 )
 
@@ -148,7 +149,7 @@ def parse_plan(text, cast):
 
 def check_plan(plan, cast, n):
     beats = plan["beats"]
-    if not isinstance(beats, list) or len(beats) < 8:
+    if not isinstance(beats, list) or len(beats) < 10:
         raise ValueError("too few beats")
     beats = beats[:n]
     fixed = []
@@ -157,6 +158,12 @@ def check_plan(plan, cast, n):
         if who not in cast:
             who = cast[i % len(cast)]
         fixed.append({"speaker": who, "intent": str(b.get("intent", "")).strip()})
+    for i in range(1, len(fixed)):  # nobody speaks twice in a row
+        if fixed[i]["speaker"] == fixed[i - 1]["speaker"]:
+            spoken = [b["speaker"] for b in fixed[:i]]
+            others = [c for c in cast if c != fixed[i - 1]["speaker"]
+                      and (i + 1 >= len(fixed) or c != fixed[i + 1]["speaker"])] or [c for c in cast if c != fixed[i - 1]["speaker"]]
+            fixed[i]["speaker"] = min(others, key=lambda c: spoken.count(c))
     missing = [c for c in cast if c not in {b["speaker"] for b in fixed}]
     for k, c in enumerate(missing):  # every cast member speaks at least once
         fixed[1 + k * 2]["speaker"] = c
