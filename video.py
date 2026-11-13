@@ -362,7 +362,8 @@ def angle_keys(name):
     return [f"{name}_{s}" for s in ANGLE_SUFFIXES if f"{name}_{s}" not in IGNORED_ANGLES]
 
 
-PLACE_FOR = {"Pierce": ["lobby", "hallway"], "Vex": ["bar"], "Madame Halloran": ["reception", "elevator"]}
+PLACE_FOR = {"Pierce": ["lobby", "hallway"], "Vex": ["bar"], "Madame Halloran": ["reception", "elevator"],
+             "Mr. Loop": ["lobby", "reception"], "Ms. Context": ["lobby", "hallway"]}
 HEIGHT = 1000  # standard sprite height in pixels
 _images_made = 0
 new_assets = []
@@ -881,6 +882,11 @@ def main():
         print("Drawn assets are not complete; using the simple code-drawn characters.", file=sys.stderr)
         ensure_renderer()
     ep = json.loads((ROOT / "transcripts" / f"{DAY}.json").read_text(encoding="utf-8"))
+    if assets is not None:  # guests who may appear in the episode (skipped if their drawings are missing)
+        for g in GUESTS:
+            states = load_robot(ROOT / "assets", g)
+            if states is not None:
+                assets["robots"][g] = states
 
     sides, prev_cast = {}, set()
 
@@ -888,6 +894,10 @@ def main():
         nonlocal prev_cast
         if assets is None:
             return lambda i, n, level, blink: base_frame(work, speaker, level, blink)
+        if speaker and speaker not in assets["robots"]:
+            speaker = None  # no drawing for this character: show the room only
+        if prev and prev not in assets["robots"]:
+            prev = None
         cast = []
         if speaker:
             if prev and prev != speaker and prev in sides:
@@ -945,11 +955,109 @@ def main():
     tmp.rename(out)
     print(f"Video saved: {out}. New drawings this run: {len(new_assets)}.")
 
+# ---------------------------------------------------------------- dollhouse test
+DOLLHOUSE_PROMPTS = {
+    "dollhouse_a": (
+        f"{STYLE}. Vertical 9:16 composition. A cutaway cross-section of a tall vintage hotel seen straight from the front, "
+        "like a dollhouse with the front wall removed. Exactly three floors stacked, each the same height, each a wide open room "
+        "with a flat floor line along its bottom edge. Top floor: a long hallway with red carpet, many doors and one glowing door "
+        "numbered 404. Middle floor: a cozy bar with glowing bottles, brass taps and empty stools. Ground floor: a grand lobby "
+        "with a reception desk and brass lamps. Thin wall dividers between floors, warm golden light, small cozy details. "
+        "No people, no characters, no text except the door number."),
+    "dollhouse_b": (
+        f"{STYLE}. Vertical 9:16 composition. A top-down floor plan of the ground floor of a vintage hotel, seen from directly "
+        "above with the roof removed, like a doll house: a grand lobby in the middle with a checkered marble floor, a cozy bar "
+        "at one side with round tables and stools, a reception desk, a long red-carpet hallway with many doors, and a small "
+        "elevator. Warm light, tiny cozy details. No people, no characters, no text."),
+}
+# camera path: (seconds, zoom, centre x as share of width, centre y as share of height)
+DOLLHOUSE_PATH = [(0, 1.0, 0.5, 0.5), (3, 1.12, 0.5, 0.5), (5.2, 1.9, 0.62, 0.50), (8, 1.95, 0.62, 0.50),
+                  (10.2, 1.9, 0.40, 0.78), (13, 1.95, 0.40, 0.78), (15.2, 1.9, 0.5, 0.22), (18, 1.95, 0.5, 0.22),
+                  (20, 1.0, 0.5, 0.5)]
+DOLLHOUSE_TEXT = [
+    "Welcome to the Token Hotel. Three floors. Zero humans.",
+    "On the middle floor, Vex is polishing the same glass again.",
+    "In the lobby, Pierce is apologizing to a lamp.",
+    "And somewhere on the top floor, room 404 is waiting.",
+]
+
+
+def dollhouse_cam(t):
+    p = DOLLHOUSE_PATH
+    if t <= p[0][0]:
+        return p[0][1:]
+    for a, b in zip(p, p[1:]):
+        if t <= b[0]:
+            k = (t - a[0]) / (b[0] - a[0])
+            k = k * k * (3 - 2 * k)  # smooth start and stop
+            return tuple(a[j] + (b[j] - a[j]) * k for j in (1, 2, 3))
+    return p[-1][1:]
+
+
+def main_dollhouse():
+    global MAX_IMAGES
+    MAX_IMAGES = max(MAX_IMAGES, 6)
+    work = ROOT / "build" / f"dollhouse_{DAY}"
+    work.mkdir(parents=True, exist_ok=True)
+    make_assets()
+    d = ROOT / "assets"
+    (d / "places").mkdir(exist_ok=True)
+    for name, prompt in DOLLHOUSE_PROMPTS.items():
+        gen_image(prompt, d / "places" / f"{name}.png")
+    assets = load_assets()
+    pa = d / "places" / "dollhouse_a.png"
+    if assets is None or not pa.exists():
+        sys.exit("Staff drawings or the dollhouse drawing are missing; cannot make the test.")
+    (ROOT / "videos").mkdir(exist_ok=True)
+    for name in DOLLHOUSE_PROMPTS:
+        src = d / "places" / f"{name}.png"
+        if src.exists():
+            shutil.copy(src, ROOT / "videos" / f"{name}.png")
+    im = Image.open(pa).convert("RGB")
+    scale = max(W / im.width, H / im.height)
+    im = im.resize((int(im.width * scale + 0.5), int(im.height * scale + 0.5)), Image.LANCZOS)
+    left, top = (im.width - W) // 2, (im.height - H) // 2
+    bg = im.crop((left, top, left + W, top + H)).convert("RGBA")
+    # (who, feet y as share of height, x as share of width at start, x at end of the 20 seconds)
+    cast = [("Vex", 0.60, 0.66, 0.60), ("Pierce", 0.90, 0.22, 0.52), ("Madame Halloran", 0.90, 0.80, 0.80)]
+    seg = 5.0
+    scenes = []
+    for k, text in enumerate(DOLLHOUSE_TEXT):
+        def renderer(i, n, level, blink, k=k):
+            t = k * seg + i / FPS
+            frame = bg.copy()
+            for who, fy, x0, x1 in cast:
+                kk = min(1.0, t / 20.0)
+                cx = (x0 + (x1 - x0) * kk) * W
+                canvas, pad_h, sp_w = sprite(assets, who, "blink" if blink else "base", 0.26)
+                bob = 3 * math.sin(2 * math.pi * (t * 0.8 + x0))
+                sh = shadow(sp_w)
+                frame.alpha_composite(sh, (int(cx - sh.width / 2), int(fy * H - sh.height / 2 - 4)))
+                frame.alpha_composite(canvas, (int(cx - canvas.width / 2), int(fy * H - canvas.height + bob)))
+            z, cxs, cys = dollhouse_cam(t)
+            w0, h0 = W / z, H / z
+            cx = min(max(cxs * W, w0 / 2), W - w0 / 2)
+            cy = min(max(cys * H, h0 / 2), H - h0 / 2)
+            frame = frame.resize((W, H), Image.BICUBIC, box=(cx - w0 / 2, cy - h0 / 2, cx + w0 / 2, cy + h0 / 2))
+            return Image.alpha_composite(frame, vignette())
+        scenes.append(make_scene(work, k, "Narrator", "", text, None, renderer, min_len=seg - 0.5))
+    lst = work / "list.txt"
+    lst.write_text("".join(f"file '{p.resolve()}'\n" for p in scenes))
+    out = ROOT / "videos" / f"dollhouse_{DAY}.mp4"
+    tmp = ROOT / "videos" / f"tmp_dollhouse_{DAY}.mp4"
+    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", str(lst),
+                    "-c:v", "copy", "-c:a", "aac", "-b:a", "128k", "-ar", "24000", str(tmp)], check=True)
+    tmp.rename(out)
+    print(f"Dollhouse test saved: {out}. New drawings this run: {len(new_assets)}.")
+
+
 
 if __name__ == "__main__":
     if os.environ.get("ANGLES") == "1":
         main_angles()
     elif os.environ.get("INTRO") == "1":
         main_intro()
+    elif os.environ.get("DOLLHOUSE") == "1":
+        main_dollhouse()
     else:
         main()
