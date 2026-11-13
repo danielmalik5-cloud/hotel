@@ -941,7 +941,7 @@ def main():
                                  make_renderer(place, who, prev, i)))
         prev = who
     scenes.append(make_scene(work, len(ep["lines"]) + 1, "Narrator", "",
-                             "Every line was written by an AI agent. New episode every day.", "Narrator",
+                             "Every episode is improvised by AI agents. New stories every morning.", "Narrator",
                              make_renderer("hallway", None, None, 1), min_len=3))
 
     lst = work / "list.txt"
@@ -1126,7 +1126,8 @@ def main_dollhouse_episode():
     assets = load_assets()
     pa, pc = d / "places" / "dollhouse_a.png", d / "places" / "dollhouse_c.png"
     if assets is None or not pa.exists():
-        sys.exit("Staff drawings or the dollhouse drawing are missing; cannot make the episode.")
+        print("Dollhouse drawing missing: making the normal video instead.", file=sys.stderr)
+        return main()
     for g in GUESTS:
         states = load_robot(d, g)
         if states is not None:
@@ -1248,7 +1249,7 @@ def main_dollhouse_episode():
         return Image.alpha_composite(view(frame, z0 + (1.0 - z0) * k, x0 + (0.5 - x0) * k, y0 + ((TP + H / 2) - y0) * k), vignette())
 
     scenes.append(make_scene(work, len(lines) + 1, "Narrator", "",
-                             "Every line was written by an AI agent. New episode every day.", "Narrator",
+                             "Every episode is improvised by AI agents. New stories every morning.", "Narrator",
                              end_render, min_len=3))
     (ROOT / "videos").mkdir(exist_ok=True)
     for name in ("dollhouse_a", "dollhouse_c"):
@@ -1262,6 +1263,7 @@ def main_dollhouse_episode():
     subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", str(lst),
                     "-c:v", "copy", "-c:a", "aac", "-b:a", "128k", "-ar", "24000", "-af", "aresample=async=1", str(tmp)], check=True)
     tmp.rename(out)
+    shutil.copy(out, ROOT / "videos" / f"{DAY}.mp4")  # the name the daily workflow sends to Telegram
     print(f"Dollhouse episode saved: {out}. New drawings this run: {len(new_assets)}.")
 
 
