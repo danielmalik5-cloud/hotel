@@ -1096,6 +1096,170 @@ def main_dollhouse():
 
 
 
+# ---------------------------------------------------------------- dollhouse episode
+def cover_crop(path):
+    im = Image.open(path).convert("RGB")
+    sc = max(W / im.width, H / im.height)
+    im = im.resize((int(im.width * sc + 0.5), int(im.height * sc + 0.5)), Image.LANCZOS)
+    left, top = (im.width - W) // 2, (im.height - H) // 2
+    return im.crop((left, top, left + W, top + H)).convert("RGBA")
+
+
+def crop_view(frame, z, cxs, cys):
+    w0, h1 = W / z, H / z
+    cx = min(max(cxs * W, w0 / 2), W - w0 / 2)
+    cy = min(max(cys * H, h1 / 2), H - h1 / 2)
+    return frame.resize((W, H), Image.BICUBIC, box=(cx - w0 / 2, cy - h1 / 2, cx + w0 / 2, cy + h1 / 2))
+
+
+def main_dollhouse_episode():
+    """The day's episode filmed in the dollhouse: one hotel drawing, the camera glides between floors."""
+    global MAX_IMAGES, FPS
+    MAX_IMAGES = max(MAX_IMAGES, 6)
+    FPS = 30
+    work = ROOT / "build" / f"dhep_{DAY}"
+    work.mkdir(parents=True, exist_ok=True)
+    make_assets()
+    d = ROOT / "assets"
+    for name, prompt in DOLLHOUSE_PROMPTS.items():
+        gen_image(prompt, d / "places" / f"{name}.png")
+    assets = load_assets()
+    pa, pc = d / "places" / "dollhouse_a.png", d / "places" / "dollhouse_c.png"
+    if assets is None or not pa.exists():
+        sys.exit("Staff drawings or the dollhouse drawing are missing; cannot make the episode.")
+    for g in GUESTS:
+        states = load_robot(d, g)
+        if states is not None:
+            assets["robots"][g] = states
+    ep = json.loads((ROOT / "transcripts" / f"{DAY}.json").read_text(encoding="utf-8"))
+    bg0 = cover_crop(pa)
+    top = cover_crop(pc) if pc.exists() else None
+    bands = find_floor_bands(bg0)
+    # extra ground below the building so the lobby can rise above the caption bar
+    ext = int(0.30 * H)
+    strip = bg0.crop((0, H - 40, W, H)).resize((W, ext)).filter(ImageFilter.GaussianBlur(14))
+    strip = Image.blend(strip, Image.new("RGBA", strip.size, (30, 20, 14, 255)), 0.45)
+    bg = Image.new("RGBA", (W, H + ext))
+    bg.paste(bg0, (0, 0))
+    bg.paste(strip, (0, H))
+    CH = H + ext
+
+    def view(frame, z, cxs, cy):
+        w0, h1 = W / z, H / z
+        cx = min(max(cxs * W, w0 / 2), W - w0 / 2)
+        cy = min(max(cy, h1 / 2), CH - h1 / 2)
+        return frame.resize((W, H), Image.BICUBIC, box=(cx - w0 / 2, cy - h1 / 2, cx + w0 / 2, cy + h1 / 2))
+    print("Floor bands:", bands)
+    hall, bar, lobby = bands[0], bands[-2], bands[-1]
+    floors = {"hall": hall, "bar": bar, "lobby": lobby}
+    Z = 1.8
+    h0 = H / Z
+
+    def cam_y(band):
+        return (band[0] + band[1]) / 2 + 0.15 * h0
+
+    guest = ep.get("guest")
+    homes = {"Pierce": ("lobby", 0.30), "Madame Halloran": ("lobby", 0.78), "Vex": ("bar", 0.68)}
+    if guest in assets["robots"]:
+        homes[guest] = ("lobby", 0.54)
+    lines = ep["lines"]
+    # where each character stands at each scene (index 1..n); Pierce walks to the hallway when he says so
+    state = dict(homes)
+    poses = []
+    for l in lines:
+        who, txt = l["speaker"], l["line"].lower()
+        if who == "Pierce" and "hallway" in txt:
+            state["Pierce"] = ("hall", 0.45)
+        if who == guest and "bar" in txt and guest in state:
+            state[guest] = ("bar", 0.40)
+        if who not in state:
+            state[who] = ("lobby", 0.5)
+        poses.append(dict(state))
+
+    def target(pose, speaker):
+        fl, x = pose.get(speaker, ("lobby", 0.5))
+        return (Z, min(max(x, 0.30), 0.70), cam_y(floors[fl]))
+
+    def draw_cast(frame, pose, speaker, level, blink, t):
+        for who, (fl, x) in pose.items():
+            if who not in assets["robots"]:
+                continue
+            band = floors[fl]
+            bh = band[1] - band[0]
+            fy = band[1] - 0.10 * bh
+            speaking = who == speaker
+            face = "talk" if (speaking and level > 0) else ("blink" if blink else "base")
+            canvas, pad_h, sp_w = sprite(assets, who, face, 0.72 * bh / HEIGHT)
+            bob = 3 * math.sin(2 * math.pi * (t * 0.8 + x)) + (-4 * level if speaking else 0)
+            cx = x * W
+            sh = shadow(sp_w)
+            frame.alpha_composite(sh, (int(cx - sh.width / 2), int(fy - sh.height / 2 - 4)))
+            frame.alpha_composite(canvas, (int(cx - canvas.width / 2), int(fy - canvas.height + bob)))
+
+    scenes = []
+    # opening: from above, slowly in toward the terrace, then the camera drops into the hotel
+    first_pose = poses[0] if poses else homes
+
+    def open_render(i, n, level, blink):
+        k = ease(i / max(1, n - 1))
+        if top is not None:
+            return Image.alpha_composite(crop_view(top, 1.0 + 0.55 * k, 0.5 - 0.22 * k, 0.5 + 0.0 * k), vignette())
+        frame = bg.copy()
+        draw_cast(frame, first_pose, None, 0, blink, i / FPS)
+        return Image.alpha_composite(view(frame, 1.0 + 0.8 * k, 0.5, H / 2 + 0.2 * k * H), vignette())
+
+    scenes.append(make_scene(work, 0, "Narrator", "", "Tonight at the Token Hotel: " + ep["situation"],
+                             "Narrator", open_render, min_len=4))
+    prev_target = (1.0, 0.5, H / 2)
+    for idx, l in enumerate(lines, start=1):
+        who = l["speaker"]
+        pose = poses[idx - 1]
+        tgt = target(pose, who)
+        start = prev_target
+        if idx == 1:
+            start = (1.15, 0.5, H / 2)
+
+        def renderer(i, n, level, blink, start=start, tgt=tgt, pose=pose, who=who):
+            t = i / FPS
+            glide = min(1.1, 0.4 * n / FPS)
+            k = ease(t / glide) if glide > 0 else 1.0
+            drift = 1.0 + 0.03 * (t / max(0.1, n / FPS))
+            cam = tuple(start[j] + (tgt[j] - start[j]) * k for j in range(3))
+            frame = bg.copy()
+            draw_cast(frame, pose, who, level, blink, t)
+            return Image.alpha_composite(view(frame, cam[0] * (drift if k >= 1 else 1.0), cam[1], cam[2]), vignette())
+
+        scenes.append(make_scene(work, idx, who, l["role"], l["line"], who, renderer))
+        prev_target = tgt
+
+    last_pose = poses[-1] if poses else homes
+
+    def end_render(i, n, level, blink):
+        k = ease(i / max(1, n - 1))
+        z0, x0, y0 = prev_target
+        frame = bg.copy()
+        draw_cast(frame, last_pose, None, 0, blink, i / FPS)
+        return Image.alpha_composite(view(frame, z0 + (1.0 - z0) * k, x0 + (0.5 - x0) * k, y0 + (H / 2 - y0) * k), vignette())
+
+    scenes.append(make_scene(work, len(lines) + 1, "Narrator", "",
+                             "Every line was written by an AI agent. New episode every day.", "Narrator",
+                             end_render, min_len=3))
+    (ROOT / "videos").mkdir(exist_ok=True)
+    for name in ("dollhouse_a", "dollhouse_c"):
+        src = d / "places" / f"{name}.png"
+        if src.exists():
+            shutil.copy(src, ROOT / "videos" / f"{name}.png")
+    lst = work / "list.txt"
+    lst.write_text("".join(f"file '{p.resolve()}'\n" for p in scenes))
+    out = ROOT / "videos" / f"dollhouse_ep_{DAY}.mp4"
+    tmp = ROOT / "videos" / f"tmp_dollhouse_ep_{DAY}.mp4"
+    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", str(lst),
+                    "-c:v", "copy", "-c:a", "aac", "-b:a", "128k", "-ar", "24000", "-af", "aresample=async=1", str(tmp)], check=True)
+    tmp.rename(out)
+    print(f"Dollhouse episode saved: {out}. New drawings this run: {len(new_assets)}.")
+
+
+
 if __name__ == "__main__":
     if os.environ.get("ANGLES") == "1":
         main_angles()
@@ -1103,5 +1267,7 @@ if __name__ == "__main__":
         main_intro()
     elif os.environ.get("DOLLHOUSE") == "1":
         main_dollhouse()
+    elif os.environ.get("DOLLHOUSE_EP") == "1":
+        main_dollhouse_episode()
     else:
         main()
