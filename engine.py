@@ -34,6 +34,8 @@ RULES = (
     "Reply with ONLY your next spoken line: one sentence, at most 16 words. Use plain, everyday English, simple words. "
     "Be funny and concrete: say something specific, not just polite small talk. "
     "No stage directions, no quotation marks, no name prefix. Stay in character. "
+    "Remember the viewer only hears the dialogue and has never seen the hotel: be clear about what is happening, and if you mention "
+    "a thing or a problem for the first time, say in plain words what it is. Never refer to something nobody has mentioned yet. "
     "Pursue your own goal in this scene, react to what was just said, and move the story forward. "
     "Never reveal your secret directly unless the scene forces you to. "
     "Keep it family friendly and never mention real people, brands or politics."
@@ -44,7 +46,9 @@ PLANNER_RULES = (
     "You write a short episode PLAN, not the dialogue. The audience does not know yet how AI agents work together, "
     "so the episode must show agent behavior in a funny, easy way: handing a task to another agent, asking another agent for "
     "information, misunderstanding an instruction, forgetting context, getting stuck in a loop, or a request that fails. "
-    "Use at least two such moments. The tone is light and comedic. Structure: a strong hook, a problem, a complication, "
+    "Use at least two such moments. The story must be easy to follow for a viewer who knows nothing: introduce every object "
+    "and problem in plain words before it is used again, keep to ONE clear problem, and make the last beat a clear funny "
+    "payoff that solves or twists that problem. The tone is light and comedic. Structure: a strong hook, a problem, a complication, "
     "a twist, and a punchline as the last beat. Keep it family friendly with no real people, brands or politics.\n"
     "Reply with ONLY plain text lines in exactly this format, nothing else, no markdown:\n"
     "TITLE: short episode title\n"
@@ -190,6 +194,18 @@ def plan_episode(chars, situation, guest, mystery, yesterday, n):
     return plan
 
 
+def strip_name(line, names):
+    """Remove a speaker name the model sometimes writes at the start of its line (even twice)."""
+    import re
+    line = line.strip().strip('"').strip()
+    for _ in range(3):
+        m = re.match(r"^\s*(" + "|".join(re.escape(n) for n in names) + r")\s*:\s*", line)
+        if not m:
+            break
+        line = line[m.end():]
+    return line.strip().strip('"').strip()
+
+
 def build_scene(chars, plan, situation_text):
     transcript = []
     for i, beat in enumerate(plan["beats"]):
@@ -210,13 +226,15 @@ def build_scene(chars, plan, situation_text):
                 f"Tonight's story: {situation_text}\n\n"
                 f"Scene so far:\n{history}\n\n"
                 f"What this moment should do: {beat['intent']}\n"
-                + ("This is the LAST line of the episode: make it a punchline.\n" if last else "")
+                + ("This is the LAST line of the episode: a clear, funny punchline that pays off the problem of tonight's story.\n" if last else "")
                 + f"Now write {name}'s next line."
             )
             line = call_claude(system, user_text)
+            line = strip_name(line, chars["all"])
             if len(line.split()) > 18:  # the model sometimes ignores the length limit: ask once for a shorter version
                 line = call_claude(system, user_text + f"\nYour draft was too long: {line}\n"
                                    "Rewrite it in at most 16 words, keeping the joke. Reply with only the line.")
+                line = strip_name(line, chars["all"])
         transcript.append({"speaker": name, "role": chars["all"][name]["role"], "line": line})
     return transcript
 
@@ -243,7 +261,7 @@ def main():
     today = date.today().isoformat()
     rng = random.Random(f"{today}-{random.random()}" if preview else today)  # same day, same episode
     situation = rng.choice(config["situations"])
-    guest = rng.choice(sorted(guests)) if guests and rng.random() < 0.8 else None
+    guest = rng.choice(sorted(guests)) if guests and rng.random() < 0.9 else None
     mystery = rng.random() < 0.2
     out_dir = ROOT / "transcripts"
     yesterday = yesterday_summary(out_dir, today)
