@@ -1135,14 +1135,18 @@ def main_dollhouse_episode():
     bg0 = cover_crop(pa)
     top = cover_crop(pc) if pc.exists() else None
     bands = find_floor_bands(bg0)
-    # extra ground below the building so the lobby can rise above the caption bar
-    ext = int(0.30 * H)
-    strip = bg0.crop((0, H - 40, W, H)).resize((W, ext)).filter(ImageFilter.GaussianBlur(14))
-    strip = Image.blend(strip, Image.new("RGBA", strip.size, (30, 20, 14, 255)), 0.45)
-    bg = Image.new("RGBA", (W, H + ext))
-    bg.paste(bg0, (0, 0))
-    bg.paste(strip, (0, H))
-    CH = H + ext
+    # the building ends at the lobby floor bar; below it a dark stone base gives the camera room
+    hall, bar, lobby = bands[0], bands[-2], bands[-1]
+    Z = 1.8
+    h0 = H / Z
+    TP = int(0.16 * H)  # dark roof space above, so the top floor can sit in the middle of the screen
+    bands = [(a0 + TP, b0 + TP) for a0, b0 in bands]
+    hall, bar, lobby = bands[0], bands[-2], bands[-1]
+    cut = min(H, lobby[1] - TP + 24)
+    CH = int(max(TP + H, (lobby[0] + lobby[1]) / 2 + 0.05 * h0 + h0 / 2) + 4)
+    bg = Image.new("RGBA", (W, CH), (26, 18, 13, 255))
+    bg.paste(bg0.crop((0, 0, W, cut)), (0, TP))
+    ImageDraw.Draw(bg).rectangle((0, TP + cut, W, TP + cut + 5), fill=(70, 48, 30, 255))
 
     def view(frame, z, cxs, cy):
         w0, h1 = W / z, H / z
@@ -1150,13 +1154,11 @@ def main_dollhouse_episode():
         cy = min(max(cy, h1 / 2), CH - h1 / 2)
         return frame.resize((W, H), Image.BICUBIC, box=(cx - w0 / 2, cy - h1 / 2, cx + w0 / 2, cy + h1 / 2))
     print("Floor bands:", bands)
-    hall, bar, lobby = bands[0], bands[-2], bands[-1]
     floors = {"hall": hall, "bar": bar, "lobby": lobby}
-    Z = 1.8
-    h0 = H / Z
 
     def cam_y(band):
-        return (band[0] + band[1]) / 2 + 0.15 * h0
+        lift = 0.05 if band is lobby else 0.15  # the lobby sits low in the picture, so frame it a bit higher
+        return (band[0] + band[1]) / 2 + lift * h0
 
     guest = ep.get("guest")
     homes = {"Pierce": ("lobby", 0.30), "Madame Halloran": ("lobby", 0.78), "Vex": ("bar", 0.68)}
@@ -1169,7 +1171,11 @@ def main_dollhouse_episode():
     for l in lines:
         who, txt = l["speaker"], l["line"].lower()
         if who == "Pierce" and "hallway" in txt:
-            state["Pierce"] = ("hall", 0.45)
+            state["Pierce"] = ("hall", 0.20)
+        if who == "Madame Halloran" and ("key" in txt or "door" in txt):
+            state["Madame Halloran"] = ("hall", 0.68)
+            if guest in state:
+                state[guest] = ("hall", 0.42)
         if who == guest and "bar" in txt and guest in state:
             state[guest] = ("bar", 0.40)
         if who not in state:
@@ -1186,7 +1192,7 @@ def main_dollhouse_episode():
                 continue
             band = floors[fl]
             bh = band[1] - band[0]
-            fy = band[1] - 0.10 * bh
+            fy = band[1] - (0.02 if fl == "hall" else 0.10) * bh
             speaking = who == speaker
             face = "talk" if (speaking and level > 0) else ("blink" if blink else "base")
             canvas, pad_h, sp_w = sprite(assets, who, face, 0.72 * bh / HEIGHT)
@@ -1206,18 +1212,18 @@ def main_dollhouse_episode():
             return Image.alpha_composite(crop_view(top, 1.0 + 0.55 * k, 0.5 - 0.22 * k, 0.5 + 0.0 * k), vignette())
         frame = bg.copy()
         draw_cast(frame, first_pose, None, 0, blink, i / FPS)
-        return Image.alpha_composite(view(frame, 1.0 + 0.8 * k, 0.5, H / 2 + 0.2 * k * H), vignette())
+        return Image.alpha_composite(view(frame, 1.0 + 0.8 * k, 0.5, (TP + H / 2) + 0.2 * k * H), vignette())
 
     scenes.append(make_scene(work, 0, "Narrator", "", "Tonight at the Token Hotel: " + ep["situation"],
                              "Narrator", open_render, min_len=4))
-    prev_target = (1.0, 0.5, H / 2)
+    prev_target = (1.0, 0.5, (TP + H / 2))
     for idx, l in enumerate(lines, start=1):
         who = l["speaker"]
         pose = poses[idx - 1]
         tgt = target(pose, who)
         start = prev_target
         if idx == 1:
-            start = (1.15, 0.5, H / 2)
+            start = (1.15, 0.5, (TP + H / 2))
 
         def renderer(i, n, level, blink, start=start, tgt=tgt, pose=pose, who=who):
             t = i / FPS
@@ -1239,7 +1245,7 @@ def main_dollhouse_episode():
         z0, x0, y0 = prev_target
         frame = bg.copy()
         draw_cast(frame, last_pose, None, 0, blink, i / FPS)
-        return Image.alpha_composite(view(frame, z0 + (1.0 - z0) * k, x0 + (0.5 - x0) * k, y0 + (H / 2 - y0) * k), vignette())
+        return Image.alpha_composite(view(frame, z0 + (1.0 - z0) * k, x0 + (0.5 - x0) * k, y0 + ((TP + H / 2) - y0) * k), vignette())
 
     scenes.append(make_scene(work, len(lines) + 1, "Narrator", "",
                              "Every line was written by an AI agent. New episode every day.", "Narrator",
