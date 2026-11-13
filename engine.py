@@ -65,7 +65,7 @@ PLANNER_RULES = (
 calls_made = 0
 
 
-def call_claude(system, user_text, max_tokens=600):
+def call_claude(system, user_text, max_tokens=900):
     """One API call. Stops the whole run if the daily cap is reached."""
     global calls_made
     if calls_made >= MAX_CALLS:
@@ -126,7 +126,7 @@ def parse_plan(text, cast):
     import re
     plan = {"title": "", "premise": "", "goals": {}, "secrets": {}, "beats": []}
     for raw in text.splitlines():
-        line = raw.strip().lstrip("-*# ").strip()
+        line = raw.strip().replace("**", "").lstrip("-*# ").strip()
         m = re.match(r"(?i)^TITLE\s*:\s*(.+)$", line)
         if m:
             plan["title"] = m.group(1).strip().strip('"')
@@ -141,17 +141,22 @@ def parse_plan(text, cast):
             if who:
                 plan["goals" if m.group(1).upper() == "GOAL" else "secrets"][who] = m.group(3).strip()
             continue
-        m = re.match(r"(?i)^BEAT\s*\d*\s*[|:]\s*(.+?)\s*\|\s*(.+)$", line)
+        m = re.match(r"(?i)^BEAT\s*\d*\s*[|:.)\-\u2013]*\s*(.+)$", line)
         if m:
-            plan["beats"].append({"speaker": m.group(1).strip(), "intent": m.group(2).strip()})
+            rest = m.group(1).strip()
+            who = next((c for c in sorted(cast, key=len, reverse=True) if rest.lower().startswith(c.lower())), None)
+            if who:
+                plan["beats"].append({"speaker": who, "intent": rest[len(who):].lstrip(" |:.)-\u2013").strip()})
     return plan
 
 
 def check_plan(plan, cast, n):
     beats = plan["beats"]
-    if not isinstance(beats, list) or len(beats) < 10:
+    if not isinstance(beats, list) or len(beats) < 5:
         raise ValueError("too few beats")
     beats = beats[:n]
+    while len(beats) < n:  # a short plan: add open beats before the final punchline beat
+        beats.insert(len(beats) - 1, {"speaker": "", "intent": "Keep the story moving toward the ending."})
     fixed = []
     for i, b in enumerate(beats):
         who = next((c for c in cast if c.lower() == str(b.get("speaker", "")).strip().lower()), None)
@@ -190,12 +195,14 @@ def plan_episode(chars, situation, guest, mystery, yesterday, n):
         + "Write the plan."
     )
     for attempt in range(2):
+        reply = ""
         try:
-            plan = check_plan(parse_plan(call_claude(PLANNER_RULES, user_text, 3000), cast), cast, n)
+            reply = call_claude(PLANNER_RULES, user_text, 6000)
+            plan = check_plan(parse_plan(reply, cast), cast, n)
             plan["cast"] = cast
             return plan
         except (ValueError, KeyError, TypeError, AttributeError) as e:
-            print(f"Plan not usable ({e}), attempt {attempt + 1}.", file=sys.stderr)
+            print(f"Plan not usable ({e}), attempt {attempt + 1}. Reply started: {reply[:500]!r}", file=sys.stderr)
     plan = fallback_plan(situation, cast, n)
     plan["cast"] = cast
     return plan
