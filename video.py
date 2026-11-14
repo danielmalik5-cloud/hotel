@@ -173,7 +173,8 @@ def wrap(draw, text, font, max_w):
     return lines
 
 
-def overlay(name, role, text):
+def overlay(name, role, text, hl=-1):
+    """Caption bar. hl = index of the word being spoken (shown in gold), -1 for none."""
     ov = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     d = ImageDraw.Draw(ov)
     d.rectangle((0, 1500, W, 1870), fill=(0, 0, 0, 190))
@@ -187,12 +188,31 @@ def overlay(name, role, text):
         if len(lines) * int(size * 1.22) <= 255:
             break
     y = 1590
+    k = 0
+    space = d.textlength(" ", font=font)
     for ln in lines:
-        d.text((60, y), ln, font=font, fill=(255, 255, 255))
+        x = 60
+        for word in ln.split():
+            d.text((x, y), word, font=font, fill=(255, 200, 80) if k == hl else (255, 255, 255))
+            x += d.textlength(word, font=font) + space
+            k += 1
         y += int(size * 1.22)
     d.text((W // 2, 1895), "AI-generated characters and voices", font=ImageFont.truetype(FONT_B, 30),
            fill=(200, 200, 200), anchor="mm")
     return ov
+
+
+def word_starts(text, dur):
+    """When each word starts (seconds), spread over the clip by word length, with a pause after punctuation."""
+    words = text.split()
+    weights = [len(w) + 2 + (4 if w[-1:] in ",.!?:;" else 0) for w in words]
+    total = float(sum(weights)) or 1.0
+    t, out = 0.12, []
+    span = max(0.2, dur - 0.2)
+    for w in weights:
+        out.append(t)
+        t += span * w / total
+    return out
 
 
 # ---------------------------------------------------------------- voice
@@ -699,8 +719,7 @@ def render_ai(assets, ctx, i, n, level, blink):
     return Image.alpha_composite(frame, vignette())
 
 
-# ---------------------------------------------------------------- video
-def make_scene(work, idx, name, role, text, voice_as, renderer, min_len=2.0, pad=0.5):
+# -----------------------------def make_scene(work, idx, name, role, text, voice_as, renderer, min_len=2.0, pad=0.5):
     wav, mp4 = work / f"{idx:02d}.wav", work / f"{idx:02d}.mp4"
     dur = gen_voice(text, voice_as, wav) if voice_as else None
     has_voice = dur is not None
@@ -710,11 +729,18 @@ def make_scene(work, idx, name, role, text, voice_as, renderer, min_len=2.0, pad
     n = max(1, round(total * FPS))
     talking = name not in ("Narrator",)
     levels = mouth_levels(wav if has_voice else None, n, text) if talking else [0] * n
-    ov = overlay(name, role, text)
+    nwords = len(text.split())
+    ovs = [overlay(name, role, text, hl=k) for k in range(nwords)] or [overlay(name, role, text)]
+    starts = word_starts(text, dur)
     frames = work / f"f{idx:02d}"
     frames.mkdir(exist_ok=True)
     for i in range(n):
         blink = 1 if ((i + idx * 7) % 45) in (0, 1) else 0
+        t = i / FPS
+        k = 0
+        while k + 1 < len(starts) and starts[k + 1] <= t:
+            k += 1
+        ov = ovs[min(k, len(ovs) - 1)] if t <= dur else ovs[-1]
         im = Image.alpha_composite(renderer(i, n, levels[i], blink).convert("RGBA"), ov).convert("RGB")
         im.save(frames / f"{i:04d}.jpg", quality=92)
     tmp = work / f"tmp_{idx:02d}.mp4"
@@ -1268,8 +1294,57 @@ def main_dollhouse_episode():
 
 
 
+# ---------------------------------------------------------------- quality check
+def qa_main():
+    """Check the newest daily video and write videos/qa.txt (empty file = all fine)."""
+    import re
+    vids = sorted((ROOT / "videos").glob("20*.mp4"), key=lambda p: p.stat().st_mtime)
+    out = ROOT / "videos" / "qa.txt"
+    if not vids:
+        out.write_text("QA: no video found to check.\n")
+        return
+    f = vids[-1]
+    problems = []
+
+    def run(args):
+        return subprocess.run(args, capture_output=True, text=True)
+
+    probe = run(["ffprobe", "-v", "error", "-show_entries", "stream=codec_type,width,height,duration",
+                 "-show_entries", "format=duration", "-of", "json", str(f)])
+    info = json.loads(probe.stdout or "{}")
+    dur = float(info.get("format", {}).get("duration", 0))
+    kinds = {s.get("codec_type"): s for s in info.get("streams", [])}
+    if "audio" not in kinds:
+        problems.append("The video has no audio track.")
+    if "video" in kinds and (kinds["video"].get("width"), kinds["video"].get("height")) != (1080, 1920):
+        problems.append("The video size is not 1080x1920.")
+    if dur < 25:
+        problems.append(f"The video is very short ({dur:.0f}s).")
+    if dur > 100:
+        problems.append(f"The video is long ({dur:.0f}s, target is under 90s).")
+    if "audio" in kinds and "video" in kinds:
+        try:
+            gap = abs(float(kinds["audio"]["duration"]) - float(kinds["video"]["duration"]))
+            if gap > 1.0:
+                problems.append(f"Audio and video lengths differ by {gap:.1f}s.")
+        except (KeyError, ValueError):
+            pass
+    sil = run(["ffmpeg", "-i", str(f), "-af", "silencedetect=noise=-45dB:d=1.8", "-vn", "-f", "null", "-"]).stderr
+    starts = [float(x) for x in re.findall(r"silence_start: ([0-9.]+)", sil)]
+    for st in starts:
+        if 1.0 < st < dur - 3.0:
+            problems.append(f"Silence in the audio around {st:.0f}s.")
+    blk = run(["ffmpeg", "-i", str(f), "-vf", "blackdetect=d=0.6:pix_th=0.06", "-an", "-f", "null", "-"]).stderr
+    for st in re.findall(r"black_start:([0-9.]+)", blk):
+        problems.append(f"Black screen around {float(st):.0f}s.")
+    out.write_text(("QA warnings for " + f.name + ":\n" + "\n".join("- " + p for p in problems) + "\n") if problems else "")
+    print("QA:", "; ".join(problems) if problems else "all fine", f"({dur:.0f}s)")
+
+
 if __name__ == "__main__":
-    if os.environ.get("ANGLES") == "1":
+    if os.environ.get("QA") == "1":
+        qa_main()
+    elif os.environ.get("ANGLES") == "1":
         main_angles()
     elif os.environ.get("INTRO") == "1":
         main_intro()
@@ -1278,4 +1353,4 @@ if __name__ == "__main__":
     elif os.environ.get("DOLLHOUSE_EP") == "1":
         main_dollhouse_episode()
     else:
-        main()
+        main()----------------------------------- video
