@@ -33,6 +33,12 @@ jobs:
           DOLLHOUSE_EP: "1"
         run: python3 video.py
 
+      - name: Check the video quality
+        continue-on-error: true
+        env:
+          QA: "1"
+        run: python3 video.py
+
       - name: Keep the video for download
         uses: actions/upload-artifact@v4
         with:
@@ -63,3 +69,15 @@ jobs:
             -F duration="$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$f" | cut -d. -f1)" \
             -F caption="The Token Hotel - $(date -u +%F)" \
             -F video=@"$f" > /dev/null
+
+      - name: Warn on Telegram if the quality check found problems
+        continue-on-error: true
+        env:
+          BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          CHAT_ID: "8873549758"
+        run: |
+          if [ -s videos/qa.txt ]; then
+            curl -sS --fail-with-body -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
+              -d chat_id="${CHAT_ID}" \
+              --data-urlencode text="$(cat videos/qa.txt)" > /dev/null
+          fi
