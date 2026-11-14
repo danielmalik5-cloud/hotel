@@ -173,13 +173,33 @@ def wrap(draw, text, font, max_w):
     return lines
 
 
-def overlay(name, role, text, hl=-1):
+AGENT_MOMENT = {
+    "HANDOFF": "Handing a task to another agent",
+    "ASK": "Asking another agent for information",
+    "MISUNDERSTAND": "Misunderstanding an instruction",
+    "FORGET": "Forgetting the context",
+    "LOOP": "Stuck in a loop",
+    "FAIL": "A request fails",
+}
+
+
+def overlay(name, role, text, hl=-1, tag=""):
     """Caption bar. hl = index of the word being spoken (shown in gold), -1 for none."""
     ov = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     d = ImageDraw.Draw(ov)
     d.rectangle((0, 1500, W, 1870), fill=(0, 0, 0, 190))
     d.rectangle((0, 0, W, 150), fill=(0, 0, 0, 160))
     d.text((W // 2, 75), "THE TOKEN HOTEL", font=ImageFont.truetype(FONT_S, 54), fill=(230, 190, 110), anchor="mm")
+    if tag in AGENT_MOMENT:  # label for the agent behavior shown in this line
+        msg = "AGENT MOMENT  \u00b7  " + AGENT_MOMENT[tag]
+        for fs in (36, 32, 28):
+            bf = ImageFont.truetype(FONT_B, fs)
+            tw = d.textlength(msg, font=bf)
+            if tw <= W - 160:
+                break
+        d.rounded_rectangle((W // 2 - tw / 2 - 30, 172, W // 2 + tw / 2 + 30, 172 + fs + 34), radius=26,
+                            fill=(230, 190, 110, 235))
+        d.text((W // 2, 172 + (fs + 34) // 2), msg, font=bf, fill=(30, 20, 12), anchor="mm")
     d.text((60, 1530), name + (f"  \u00b7  {role}" if role else ""),
            font=ImageFont.truetype(FONT_B, 42), fill=(230, 190, 110))
     for size in (68, 60, 52, 46):
@@ -719,8 +739,8 @@ def render_ai(assets, ctx, i, n, level, blink):
     return Image.alpha_composite(frame, vignette())
 
 
-# -----------------------------
-def make_scene(work, idx, name, role, text, voice_as, renderer, min_len=2.0, pad=0.5):
+# ---------------------------------------------------------------- video# ---- part 2 of the file ----
+def make_scene(work, idx, name, role, text, voice_as, renderer, min_len=2.0, pad=0.5, tag=""):
     wav, mp4 = work / f"{idx:02d}.wav", work / f"{idx:02d}.mp4"
     dur = gen_voice(text, voice_as, wav) if voice_as else None
     has_voice = dur is not None
@@ -731,7 +751,7 @@ def make_scene(work, idx, name, role, text, voice_as, renderer, min_len=2.0, pad
     talking = name not in ("Narrator",)
     levels = mouth_levels(wav if has_voice else None, n, text) if talking else [0] * n
     nwords = len(text.split())
-    ovs = [overlay(name, role, text, hl=k) for k in range(nwords)] or [overlay(name, role, text)]
+    ovs = [overlay(name, role, text, hl=k, tag=tag) for k in range(nwords)] or [overlay(name, role, text, tag=tag)]
     starts = word_starts(text, dur)
     frames = work / f"f{idx:02d}"
     frames.mkdir(exist_ok=True)
@@ -965,7 +985,7 @@ def main():
         if assets is not None:
             place = pick_variant(assets, place, i)
         scenes.append(make_scene(work, i, who, l["role"], l["line"], who,
-                                 make_renderer(place, who, prev, i)))
+                                 make_renderer(place, who, prev, i), tag=l.get("tag", "")))
         prev = who
     scenes.append(make_scene(work, len(ep["lines"]) + 1, "Narrator", "",
                              "Every episode is improvised by AI agents. New stories every morning.", "Narrator",
@@ -1263,7 +1283,7 @@ def main_dollhouse_episode():
             draw_cast(frame, pose, who, level, blink, t)
             return Image.alpha_composite(view(frame, cam[0] * (drift if k >= 1 else 1.0), cam[1], cam[2]), vignette())
 
-        scenes.append(make_scene(work, idx, who, l["role"], l["line"], who, renderer))
+        scenes.append(make_scene(work, idx, who, l["role"], l["line"], who, renderer, tag=l.get("tag", "")))
         prev_target = tgt
 
     last_pose = poses[-1] if poses else homes
@@ -1354,4 +1374,4 @@ if __name__ == "__main__":
     elif os.environ.get("DOLLHOUSE_EP") == "1":
         main_dollhouse_episode()
     else:
-        main()----------------------------------- video
+        main()
