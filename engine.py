@@ -9,7 +9,7 @@ Environment variables:
   ANTHROPIC_API_KEY  - your key (set as a GitHub secret, never in this file)
   MOCK=1             - no API calls, canned lines (for testing)
   MAX_CALLS          - hard cap on API calls per run (default 16)
-  BEATS              - number of lines in the episode (default 12)
+  BEATS              - number of lines in the episode (default 10)
   PREVIEW=1          - write a text preview only (preview.txt), touch nothing else
   MODEL              - model id (default claude-haiku-5-5)
 """
@@ -26,7 +26,7 @@ ROOT = Path(__file__).parent
 API_URL = "https://api.anthropic.com/v1/messages"
 MODEL = os.environ.get("MODEL", "claude-haiku-5-5")
 MAX_CALLS = max(int(os.environ.get("MAX_CALLS", "30")), 30)  # room for the plan, 12 lines and a few shortenings
-BEATS = int(os.environ.get("BEATS", "12"))  # lines per episode (the old TURNS setting is ignored)
+BEATS = int(os.environ.get("BEATS", "10"))  # lines per episode (the old TURNS setting is ignored)
 MOCK = os.environ.get("MOCK") == "1"
 
 RULES = (
