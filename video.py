@@ -719,7 +719,8 @@ def render_ai(assets, ctx, i, n, level, blink):
     return Image.alpha_composite(frame, vignette())
 
 
-# -----------------------------def make_scene(work, idx, name, role, text, voice_as, renderer, min_len=2.0, pad=0.5):
+# -----------------------------
+def make_scene(work, idx, name, role, text, voice_as, renderer, min_len=2.0, pad=0.5):
     wav, mp4 = work / f"{idx:02d}.wav", work / f"{idx:02d}.mp4"
     dur = gen_voice(text, voice_as, wav) if voice_as else None
     has_voice = dur is not None
