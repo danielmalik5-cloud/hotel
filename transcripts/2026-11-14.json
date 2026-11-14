@@ -1,0 +1,133 @@
+{
+  "date": "2026-11-14",
+  "title": "The Order That Forgot Itself",
+  "situation": "A forgetful guest tries to order one drink, and the whole hotel ends up helping her remember it.",
+  "guest": "Ms. Context",
+  "plan": {
+    "goals": {
+      "Pierce": "Deliver one guest's order perfectly for once, without apologizing for it.",
+      "Vex": "Get through one shift without someone ordering a drink named after a kitchen appliance.",
+      "Madame Halloran": "Run the lobby like a respectable establishment for one full hour.",
+      "Ms. Context": "Order a drink she can still remember ten seconds later."
+    },
+    "secrets": {
+      "Ms. Context": "She has already ordered this exact drink three times today.",
+      "Pierce": "He keeps a notebook of every guest order and has been writing them down in secret."
+    },
+    "beats": [
+      {
+        "speaker": "Ms. Context",
+        "intent": "She sweeps into the lobby and orders a blue drink from Vex, then turns to ask Pierce what she just ordered."
+      },
+      {
+        "speaker": "Vex",
+        "intent": "Vex repeats the blue drink back to her, but Ms. Context has already forgotten it and asks for something else."
+      },
+      {
+        "speaker": "Pierce",
+        "intent": "Pierce offers to write the order down, apologizes twice, and drops his notepad into a potted fern."
+      },
+      {
+        "speaker": "Madame Halloran",
+        "intent": "Madame Halloran strides in, declares that a respectable establishment does not lose drinks, and orders Pierce to fix it."
+      },
+      {
+        "speaker": "Ms. Context",
+        "intent": "Ms. Context guesses her drink is a sandwich and asks Pierce to bring one to the bar."
+      },
+      {
+        "speaker": "Pierce",
+        "intent": "Pierce hands the sandwich request through the service hatch, then tells Vex, \"Welcome! Sorry. Welcome again.\""
+      },
+      {
+        "speaker": "Vex",
+        "intent": "Vex says a cocktail bar does not serve sandwiches, then asks Pierce to find the order in his notes."
+      },
+      {
+        "speaker": "Pierce",
+        "intent": "Pierce reads his notebook aloud, but it lists three different drinks, one of them scribbled as \"Context Overflow.\""
+      },
+      {
+        "speaker": "Madame Halloran",
+        "intent": "She tries to settle it with the official ledger, but it sends her into a loop of asking Ms. Context the same question four times."
+      },
+      {
+        "speaker": "Ms. Context",
+        "intent": "Ms. Context cheerfully greets Madame Halloran with \"Welcome back, uh... you,\" then forgets the question again."
+      },
+      {
+        "speaker": "Vex",
+        "intent": "Vex secretly takes pity, writes the order on a small brass tag, and clips it to the glass rim."
+      },
+      {
+        "speaker": "Ms. Context",
+        "intent": "She finds a tiny note in the blue drink's umbrella that says \"You ordered this. Welcome back, uh... you,\" and happily says \"Oh! Hello, me."
+      }
+    ]
+  },
+  "mock": false,
+  "model": "claude-haiku-5-5",
+  "lines": [
+    {
+      "speaker": "Ms. Context",
+      "role": "Guest",
+      "line": "Vex, I'd like a blue drink, the one with the little umbrella... no wait, what was it called?"
+    },
+    {
+      "speaker": "Vex",
+      "role": "Bartender",
+      "line": "Blue with the umbrella, that's the Hallucination Sour, and you'll forget it before the umbrella lands."
+    },
+    {
+      "speaker": "Pierce",
+      "role": "Porter",
+      "line": "Sorry, I can write that down! Oh no, my notepad just fell in the fern."
+    },
+    {
+      "speaker": "Madame Halloran",
+      "role": "Manager",
+      "line": "Pierce, this is a respectable establishment, and drinks do not get lost in ferns. Fetch that notepad."
+    },
+    {
+      "speaker": "Ms. Context",
+      "role": "Guest",
+      "line": "Pierce, sorry, I meant a sandwich! Or was it the blue one? Bring a blue sandwich."
+    },
+    {
+      "speaker": "Pierce",
+      "role": "Porter",
+      "line": "Blue sandwich, through the hatch, and I wrote it down. Welcome! Sorry. Welcome again."
+    },
+    {
+      "speaker": "Vex",
+      "role": "Bartender",
+      "line": "We don't serve sandwiches, Pierce, so check that fern for the drink, not the blue sandwich."
+    },
+    {
+      "speaker": "Pierce",
+      "role": "Porter",
+      "line": "Hold on, my notebook says three drinks, and one just says \"Context Overflow.\" Sorry, is that a drink?"
+    },
+    {
+      "speaker": "Madame Halloran",
+      "role": "Manager",
+      "line": "Pierce, bring me the ledger, and nobody touch the fern until I have finished being respectable about it."
+    },
+    {
+      "speaker": "Ms. Context",
+      "role": "Guest",
+      "line": "Welcome back, uh... you! Wait, were we talking about the blue drink, or the fern?"
+    },
+    {
+      "speaker": "Vex",
+      "role": "Bartender",
+      "line": "Ms. Context, your blue drink's name is on this brass tag, so stop asking me."
+    },
+    {
+      "speaker": "Ms. Context",
+      "role": "Guest",
+      "line": "Oh! Hello, me. I already ordered this three times, so I'll just keep the umbrella."
+    }
+  ],
+  "note": "Every line is generated by an AI agent. The seed idea comes from a human-written list; the episode plan is written by an AI editor."
+}
