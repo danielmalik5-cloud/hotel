@@ -56,11 +56,17 @@ PLANNER_RULES = (
     "PREMISE: one plain sentence, at most 20 words, that sets up tonight's story\n"
     "GOAL <character>: what this character secretly wants in this episode (one line per character)\n"
     "SECRET <character>: one small secret or hidden problem (optional, only for some characters)\n"
-    "BEAT 1 | <character> | what happens in this beat, one short sentence\n"
-    "BEAT 2 | <character> | ...\n"
+    "BEAT 1 | <character> | what happens in this beat, one short sentence | optional TAG\n"
+    "BEAT 2 | <character> | ... | optional TAG\n"
+    "A TAG marks a beat that clearly shows a typical agent behavior, so the viewer can learn it. Allowed TAGs, exactly as written: "
+    "HANDOFF (an agent hands a task to another agent), ASK (an agent asks another agent for information), "
+    "MISUNDERSTAND (an agent misunderstands an instruction), FORGET (an agent forgets context), "
+    "LOOP (an agent gets stuck in a loop), FAIL (a request fails). Give a TAG to two or three beats, leave the others without one.\n"
     "There must be exactly the requested number of BEAT lines: count them, the last one must be the requested number.  Use only the characters listed in the cast, "
     "spelled exactly as listed. Every character in the cast speaks at least twice. No character speaks more than twice in a row."
 )
+
+AGENT_TAGS = ("HANDOFF", "ASK", "MISUNDERSTAND", "FORGET", "LOOP", "FAIL")
 
 calls_made = 0
 
@@ -146,7 +152,13 @@ def parse_plan(text, cast):
             rest = m.group(1).strip()
             who = next((c for c in sorted(cast, key=len, reverse=True) if rest.lower().startswith(c.lower())), None)
             if who:
-                plan["beats"].append({"speaker": who, "intent": rest[len(who):].lstrip(" |:.)-\u2013").strip()})
+                intent = rest[len(who):].lstrip(" |:.)-\u2013").strip()
+                tag = ""
+                if "|" in intent:
+                    head, tail = intent.rsplit("|", 1)
+                    if tail.strip().upper() in AGENT_TAGS:
+                        intent, tag = head.strip(), tail.strip().upper()
+                plan["beats"].append({"speaker": who, "intent": intent, "tag": tag})
     return plan
 
 
@@ -162,7 +174,8 @@ def check_plan(plan, cast, n):
         who = next((c for c in cast if c.lower() == str(b.get("speaker", "")).strip().lower()), None)
         if who not in cast:
             who = cast[i % len(cast)]
-        fixed.append({"speaker": who, "intent": str(b.get("intent", "")).strip()})
+        tag = str(b.get("tag", "")).strip().upper()
+        fixed.append({"speaker": who, "intent": str(b.get("intent", "")).strip(), "tag": tag if tag in AGENT_TAGS else ""})
     for i in range(1, len(fixed)):  # nobody speaks twice in a row
         if fixed[i]["speaker"] == fixed[i - 1]["speaker"]:
             spoken = [b["speaker"] for b in fixed[:i]]
@@ -249,7 +262,7 @@ def build_scene(chars, plan, situation_text):
                 line = call_claude(system, user_text + f"\nYour draft was too long: {line}\n"
                                    "Rewrite it in at most 16 words, keeping the joke. Reply with only the line.")
                 line = strip_name(line, chars["all"])
-        transcript.append({"speaker": name, "role": chars["all"][name]["role"], "line": line})
+        transcript.append({"speaker": name, "role": chars["all"][name]["role"], "line": line, "tag": beat.get("tag", "")})
     return transcript
 
 
