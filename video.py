@@ -1216,21 +1216,67 @@ def main_dollhouse5():
     if not (dining.exists() and terrace.exists()):
         sys.exit("A floor drawing is missing.")
 
-    def fit(p):
-        im = Image.open(p).convert("RGB")
-        return im.resize((W, int(im.height * W / im.width)), Image.LANCZOS)
-
-    divider = base.crop((0, hall404[1], W, empty[0]))
-    parts = [fit(terrace), divider, base.crop((0, 0, W, empty[0])), fit(dining), base.crop((0, empty[1], W, base.height))]
-    out = Image.new("RGB", (W, sum(p.height for p in parts)))
-    y = 0
-    for part in parts:
-        out.paste(part, (0, y))
-        y += part.height
+    out = compose_dollhouse5(base, bands, Image.open(dining).convert("RGB"), Image.open(terrace).convert("RGB"))
     out.save(d / "places" / "dollhouse_a5.png")
     (ROOT / "videos").mkdir(exist_ok=True)
     out.save(ROOT / "videos" / "dollhouse_a5.png")
     print("Five-floor dollhouse saved:", out.size, "floors found:", find_floor_bands_any(out))
+
+
+def _wall_frame(arr):
+    """Left and right outer edges of the black building wall in a floor picture."""
+    import numpy as np
+    dark = (arr.sum(axis=2) < 120).mean(axis=0)
+    cols = np.nonzero(dark > 0.6)[0]
+    return int(cols.min()), int(cols.max())
+
+
+def compose_dollhouse5(base, bands, dining, terrace):
+    """Stack: terrace / 404 hallway / dining room / bar / lobby. The 404 hallway is the full-height middle hallway
+    of the original with the glowing 404 door copied in (the original top floor is cut off at its bottom).
+    The new floors are scaled so their black side walls line up exactly with the building's walls."""
+    import numpy as np
+    hall404_band, hall_band, bar_band, lobby_band = bands
+    arr = np.asarray(base).astype(int)
+    l, r = _wall_frame(arr[lobby_band[0]:lobby_band[1]])
+    margin = tuple(int(c) for c in arr[lobby_band[0] + 50, max(0, l // 2)])
+
+    def fit(im):
+        fl, fr = _wall_frame(np.asarray(im).astype(int))
+        im = im.crop((fl, 0, fr + 1, im.height))
+        im = im.resize((r - l + 1, max(1, int(im.height * (r - l + 1) / im.width))), Image.LANCZOS)
+        row = Image.new("RGB", (base.width, im.height), margin)
+        row.paste(im, (l, 0))
+        return row
+
+    # the 404 hallway: full-height hallway with the glowing door from the original top floor
+    hall = base.crop((0, hall_band[0], base.width, hall_band[1]))
+    top = base.crop((0, hall404_band[0], base.width, hall404_band[1]))
+    x0, x1, ty0 = 483, 599, 175  # door panel in the original drawing (1080 wide)
+    hy0 = 208
+    panel_h = hall.height - hy0
+    src = top.crop((x0, ty0, x1, top.height))
+    panel = Image.new("RGB", (x1 - x0, panel_h))
+    panel.paste(src, (0, 0))
+    if src.height < panel_h:  # continue the plain glow below the number
+        filler = src.crop((0, src.height - 40, src.width, src.height)).resize((src.width, panel_h - src.height + 2))
+        panel.paste(filler, (0, src.height - 2))
+    hall.paste(panel, (x0, hy0))
+    glow = Image.new("L", hall.size, 0)
+    ImageDraw.Draw(glow).ellipse((x0 - 110, hy0 - 60, x1 + 110, hall.height + 80), fill=70)
+    glow = glow.filter(ImageFilter.GaussianBlur(45))
+    hall = Image.composite(Image.new("RGB", hall.size, (255, 196, 90)), hall, glow)
+    hall.paste(panel, (x0, hy0))
+
+    divider = base.crop((0, hall404_band[1], base.width, hall_band[0]))
+    parts = [fit(terrace), divider, hall, divider, fit(dining), divider,
+             base.crop((0, bar_band[0], base.width, base.height))]
+    out = Image.new("RGB", (base.width, sum(p.height for p in parts)), margin)
+    y = 0
+    for part in parts:
+        out.paste(part, (0, y))
+        y += part.height
+    return out
 
 
 def find_floor_bands_any(img):
