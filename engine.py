@@ -31,7 +31,7 @@ MOCK = os.environ.get("MOCK") == "1"
 
 RULES = (
     "You are an AI agent playing a character in a light comedy scene set in a hotel. "
-    "Reply with ONLY your next spoken line: one sentence, at most 16 words. Use plain, everyday English, simple words. "
+    "Reply with ONLY your next spoken line: one sentence, at most 12 words. Use plain, everyday English, simple words. "
     "Be funny and concrete: say something specific, not just polite small talk. "
     "No stage directions, no quotation marks, no name prefix. Stay in character. "
     "Remember the viewer only hears the dialogue and has never seen the hotel: be clear about what is happening, and if you mention "
@@ -50,7 +50,9 @@ PLANNER_RULES = (
     "and problem in plain words before it is used again, keep to ONE clear problem, and make the last beat a clear funny "
     "payoff that delivers what the problem was about, in a literal or absurd way (for example the guest finally gets exactly what "
     "they asked for, but in a silly form). The tone is light and comedic. Structure: a strong hook, a problem, a complication, "
-    "a twist, and a punchline as the last beat. Keep it family friendly with no real people, brands or politics.\n"
+    "a twist, and a punchline as the last beat. BEAT 1 is the hook and the very first thing the viewer hears, with no "
+    "narrator or introduction before it: a character says the strangest, funniest or most mysterious thing of the episode, "
+    "as a short question or claim that makes a viewer who is scrolling past stop, and that also makes tonight's problem clear. Keep it family friendly with no real people, brands or politics.\n"
     "Reply with ONLY plain text lines in exactly this format, nothing else, no markdown:\n"
     "TITLE: short episode title\n"
     "PREMISE: one plain sentence, at most 20 words, that sets up tonight's story\n"
@@ -249,18 +251,21 @@ def build_scene(chars, plan, situation_text):
                 mine += f"\nYour secret: {plan['secrets'][name]}"
             system = f"{RULES}\n\nSetting: {chars['hotel']}\n\nYour character: {name}, {me['role']}. {me['persona']}{mine}"
             last = i == len(plan["beats"]) - 1
+            first = i == 0
             user_text = (
                 f"Tonight's story: {situation_text}\n\n"
                 f"Scene so far:\n{history}\n\n"
                 f"What this moment should do: {beat['intent']}\n"
+                + ("This is the FIRST line of the episode and nothing comes before it: open with the hook, the strangest or "
+                   "funniest thing in tonight's story, in at most 10 words, and make tonight's problem clear.\n" if first else "")
                 + ("This is the LAST line of the episode: a clear, funny punchline that pays off the problem of tonight's story.\n" if last else "")
                 + f"Now write {name}'s next line."
             )
             line = call_claude(system, user_text)
             line = strip_name(line, chars["all"])
-            if len(line.split()) > 18:  # the model sometimes ignores the length limit: ask once for a shorter version
+            if len(line.split()) > 14:  # the model sometimes ignores the length limit: ask once for a shorter version
                 line = call_claude(system, user_text + f"\nYour draft was too long: {line}\n"
-                                   "Rewrite it in at most 16 words, keeping the joke. Reply with only the line.")
+                                   "Rewrite it in at most 12 words, keeping the joke. Reply with only the line.")
                 line = strip_name(line, chars["all"])
         transcript.append({"speaker": name, "role": chars["all"][name]["role"], "line": line, "tag": beat.get("tag", "")})
     return transcript
