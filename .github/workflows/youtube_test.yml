@@ -1,0 +1,49 @@
+name: YouTube upload test
+
+# Manual test of automatic YouTube upload: re-renders a saved episode (free, voices are cached)
+# and uploads it as PRIVATE. Until the API audit passes, YouTube keeps API uploads private anyway.
+on:
+  workflow_dispatch:
+    inputs:
+      day:
+        description: "Episode date to upload (YYYY-MM-DD)"
+        default: "2026-11-15"
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install video tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg fonts-dejavu-core
+          pip install pillow
+
+      - name: Make the video from the saved episode
+        env:
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          DAY: ${{ github.event.inputs.day }}
+          DOLLHOUSE_EP: "1"
+        run: python3 video.py
+
+      - name: Upload to YouTube as private
+        env:
+          YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+          YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+          YOUTUBE_REFRESH_TOKEN: ${{ secrets.TOUTUBE_REFRESH_TOKEN }}
+          DAY: ${{ github.event.inputs.day }}
+          PRIVACY: "private"
+        run: python3 upload.py
+
+      - name: Tell Telegram the result
+        if: always()
+        continue-on-error: true
+        env:
+          BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          CHAT_ID: "8873549758"
+        run: |
+          msg=$(cat videos/youtube.txt 2>/dev/null || echo "YouTube upload test: no result file")
+          curl -sS --fail-with-body -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
+            --data-urlencode chat_id="${CHAT_ID}" --data-urlencode text="${msg}" > /dev/null
