@@ -481,7 +481,7 @@ def assets_dir():
     return d
 
 
-def gen_image(prompt, out_path, reference=None):
+def gen_image(prompt, out_path, reference=None, aspect="9:16"):
     """Ask the image model for a picture. True if saved."""
     global _images_made
     if out_path.exists():
@@ -495,7 +495,7 @@ def gen_image(prompt, out_path, reference=None):
     for use_ratio in (True, False):
         payload = {"contents": [{"parts": parts}]}
         if use_ratio:
-            payload["generationConfig"] = {"imageConfig": {"aspectRatio": "9:16"}}
+            payload["generationConfig"] = {"imageConfig": {"aspectRatio": aspect}}
         for attempt in range(3):
             try:
                 _images_made += 1
@@ -1180,6 +1180,83 @@ def main_dollhouse_v2():
             shutil.copy(out, ROOT / "videos" / f"dollhouse_a5_{k}.png")
 
 
+DINING_FLOOR_PROMPT = (
+    "Edit this image: it is one floor of a cutaway dollhouse hotel. Keep exactly the same art style, outlines, colors, "
+    "warm light, wall panels, ceiling and side walls, the same camera and the same flat floor line along the bottom edge. "
+    "Turn the room into an elegant hotel dining room: three or four round tables with white tablecloths and small candles, "
+    "red-cushioned chairs, a small crystal chandelier, framed pictures on the wall. Keep the lower part of the floor open "
+    "and uncluttered in front. Wide landscape picture. No people, no characters, no text.")
+TERRACE_FLOOR_PROMPT = (
+    "Edit this image: it is the top floor of a cutaway dollhouse hotel. Keep exactly the same art style, outlines and warm "
+    "colors, the same camera and a flat floor line along the bottom edge. Turn it into an open-air rooftop terrace on top of "
+    "the hotel under a deep blue evening sky with a few stars: no ceiling, strings of warm light bulbs across the top, a "
+    "stone balustrade at the back, a few wrought-iron cafe tables with chairs, potted plants at both sides, a tiled floor. "
+    "Keep the front part of the floor open and uncluttered. Wide landscape picture. No people, no characters, no text.")
+
+
+def main_dollhouse5():
+    """Five floors: draw a dining room and a rooftop terrace as single floors and stack them into the original cutaway
+    (lobby, bar and the 404 hallway stay pixel-identical). About 2 images; a preview goes to Telegram."""
+    global MAX_IMAGES
+    MAX_IMAGES = max(MAX_IMAGES, 2)
+    d = assets_dir()
+    base = cover_crop(d / "places" / "dollhouse_a.png").convert("RGB")
+    bands = find_floor_bands(base)
+    if len(bands) != 4:
+        sys.exit(f"Expected 4 floors in the original drawing, found {len(bands)}: {bands}")
+    work = ROOT / "build" / "dollhouse5"
+    work.mkdir(parents=True, exist_ok=True)
+    hall404, empty, bar, lobby = bands
+    ref_empty, ref_top = work / "ref_empty.png", work / "ref_top.png"
+    base.crop((0, empty[0], W, empty[1])).save(ref_empty)
+    base.crop((0, hall404[0], W, hall404[1])).save(ref_top)
+    dining, terrace = d / "places" / "floor_dining.png", d / "places" / "floor_terrace.png"
+    gen_image(DINING_FLOOR_PROMPT, dining, reference=ref_empty, aspect="21:9")
+    gen_image(TERRACE_FLOOR_PROMPT, terrace, reference=ref_top, aspect="21:9")
+    if not (dining.exists() and terrace.exists()):
+        sys.exit("A floor drawing is missing.")
+
+    def fit(p):
+        im = Image.open(p).convert("RGB")
+        return im.resize((W, int(im.height * W / im.width)), Image.LANCZOS)
+
+    divider = base.crop((0, hall404[1], W, empty[0]))
+    parts = [fit(terrace), divider, base.crop((0, 0, W, empty[0])), fit(dining), base.crop((0, empty[1], W, base.height))]
+    out = Image.new("RGB", (W, sum(p.height for p in parts)))
+    y = 0
+    for part in parts:
+        out.paste(part, (0, y))
+        y += part.height
+    out.save(d / "places" / "dollhouse_a5.png")
+    (ROOT / "videos").mkdir(exist_ok=True)
+    out.save(ROOT / "videos" / "dollhouse_a5.png")
+    print("Five-floor dollhouse saved:", out.size, "floors found:", find_floor_bands_any(out))
+
+
+def find_floor_bands_any(img):
+    """Like find_floor_bands but for a picture of any height (no 3-floor fallback)."""
+    g = img.convert("L").crop((int(img.width * 0.15), 0, int(img.width * 0.85), img.height))
+    g = g.point(lambda v: 255 if v < 45 else 0).resize((1, img.height), Image.BOX)
+    rows = [i for i, v in enumerate(g.getdata()) if v > 0.85 * 255]
+    bars, s0, p0 = [], None, None
+    for r in rows:
+        if s0 is None:
+            s0 = p0 = r
+        elif r - p0 <= 3:
+            p0 = r
+        else:
+            bars.append((s0, p0)); s0 = p0 = r
+    if s0 is not None:
+        bars.append((s0, p0))
+    bars = [x for x in bars if x[1] - x[0] >= 6]
+    bands, prev = [], 0
+    for b0, b1 in bars:
+        if b0 - prev > 0.04 * img.height:
+            bands.append((prev, b0))
+        prev = b1
+    return bands
+
+
 DOLLHOUSE_TEXT = [
     "Welcome to the Token Hotel. Zero humans. Plenty of robots.",
     "In the bar, Vex is polishing the same glass again.",
@@ -1533,6 +1610,8 @@ def qa_main():
 if __name__ == "__main__":
     if os.environ.get("QA") == "1":
         qa_main()
+    elif os.environ.get("DOLLHOUSE5") == "1":
+        main_dollhouse5()
     elif os.environ.get("DOLLHOUSE_V2") == "1":
         main_dollhouse_v2()
     elif os.environ.get("GUEST_PREVIEW") == "1":

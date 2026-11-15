@@ -1,7 +1,7 @@
 name: Draw five-floor dollhouse
 
-# Draws two candidates of the hotel cutaway with a dining room (floor 3) and a rooftop terrace (floor 5),
-# about 0.3 NIS, and sends them to Telegram for approval. Episodes keep the old drawing until approved.
+# Draws a dining room and a rooftop terrace as single floors and stacks them into the original cutaway
+# (about 0.3 NIS), then sends the picture to Telegram for approval. Episodes keep the old drawing until approved.
 on:
   workflow_dispatch: {}
 
@@ -20,7 +20,7 @@ jobs:
       - name: Draw the candidates
         env:
           GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
-          DOLLHOUSE_V2: "1"
+          DOLLHOUSE5: "1"
           MAX_IMAGES: "2"
         run: python3 video.py
 
@@ -39,9 +39,6 @@ jobs:
           BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           CHAT_ID: "8873549758"
         run: |
-          for k in 1 2; do
-            p=videos/dollhouse_a5_$k.png
-            [ -f "$p" ] || continue
-            curl -sS --fail-with-body -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto" \
-              -F chat_id="${CHAT_ID}" -F caption="New hotel, option $k (dining room + rooftop terrace)" -F photo=@"$p" > /dev/null
-          done
+          curl -sS --fail-with-body -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendDocument" \
+            -F chat_id="${CHAT_ID}" -F caption="New hotel: dining room (floor 3) + rooftop terrace (floor 5)" \
+            -F document=@videos/dollhouse_a5.png > /dev/null
