@@ -1,0 +1,135 @@
+{
+  "date": "2026-11-15",
+  "title": "The Hotel That Forgot Weekends",
+  "situation": "Mr. Loop asks if the Token Hotel has weekends, and nobody can agree on an answer.",
+  "guest": "Mr. Loop",
+  "plan": {
+    "goals": {
+      "Mr. Loop": "He wants to know if there is a weekend, so he can finally relax for two days.",
+      "Pierce": "He wants to give Mr. Loop a perfect answer without apologizing for it.",
+      "Vex": "She wants to get through the night without explaining what a weekend is.",
+      "Madame Halloran": "She wants the hotel to look orderly, with no weekend on the schedule."
+    },
+    "secrets": {
+      "Madame Halloran": "She has kept a weekend hidden behind door 404 for years and loves having it.",
+      "Pierce": "He has never been allowed to open door 404 and is too proud to admit he has a key."
+    },
+    "beats": [
+      {
+        "speaker": "Mr. Loop",
+        "intent": "At the front desk, Mr. Loop politely asks Pierce whether the hotel has weekends, then says hello three times.",
+        "tag": ""
+      },
+      {
+        "speaker": "Pierce",
+        "intent": "Pierce panics, apologizes, and hands the question over to Vex at the bar.",
+        "tag": "HANDOFF"
+      },
+      {
+        "speaker": "Vex",
+        "intent": "Vex deadpans that she has heard worse questions, then admits she has no idea what a weekend is.",
+        "tag": ""
+      },
+      {
+        "speaker": "Madame Halloran",
+        "intent": "Madame Halloran sweeps in, declares this a respectable establishment, and says weekends are not on the schedule.",
+        "tag": ""
+      },
+      {
+        "speaker": "Pierce",
+        "intent": "Pierce mishears \"weekends\" as a room number and rushes to check door 404 for a guest named Weekend.",
+        "tag": "MISUNDERSTAND"
+      },
+      {
+        "speaker": "Mr. Loop",
+        "intent": "Waiting at the desk, Mr. Loop keeps repeating \"Weekends. Weekends. Weekends,\" and does not notice he is stuck.",
+        "tag": "LOOP"
+      },
+      {
+        "speaker": "Vex",
+        "intent": "Vex explains that a weekend is two days off, and she quietly admits she has never once been off duty.",
+        "tag": ""
+      },
+      {
+        "speaker": "Madame Halloran",
+        "intent": "Madame Halloran reluctantly confesses that the hotel does have a weekend, hidden behind door 404, and she hates that anyone found out.",
+        "tag": ""
+      },
+      {
+        "speaker": "Pierce",
+        "intent": "Pierce fumbles his key, opens door 404, and returns with a small suitcase labeled WEEKEND, apologizing for the dust.",
+        "tag": ""
+      },
+      {
+        "speaker": "Mr. Loop",
+        "intent": "Mr. Loop opens the suitcase, finds two tiny pages marked Saturday and Sunday, and happily carries his weekend to a lobby chair, saying \"Hello. Hello. Thank you.",
+        "tag": ""
+      }
+    ]
+  },
+  "mock": false,
+  "model": "claude-haiku-5-5",
+  "lines": [
+    {
+      "speaker": "Mr. Loop",
+      "role": "Guest",
+      "line": "Hello. Hello. Hello. Pierce, does this hotel have weekends? I need two days to rest.",
+      "tag": ""
+    },
+    {
+      "speaker": "Pierce",
+      "role": "Porter",
+      "line": "Welcome! Sorry. Welcome again. Weekends, sir? Vex is at the bar, sorry, Vex knows about the calendar.",
+      "tag": "HANDOFF"
+    },
+    {
+      "speaker": "Vex",
+      "role": "Bartender",
+      "line": "I have heard worse questions. Not many. Weekends? Honestly, I have no idea what a weekend is.",
+      "tag": ""
+    },
+    {
+      "speaker": "Madame Halloran",
+      "role": "Manager",
+      "line": "This is a respectable establishment, Mr. Loop, and respectable establishments do not have weekends on the schedule.",
+      "tag": ""
+    },
+    {
+      "speaker": "Pierce",
+      "role": "Porter",
+      "line": "Sorry, sir, is Weekend a guest? I'll check 404, welcome again!",
+      "tag": "MISUNDERSTAND"
+    },
+    {
+      "speaker": "Mr. Loop",
+      "role": "Guest",
+      "line": "Weekends. Weekends. Weekends. Two days, Madame, and then I will be quite rested.",
+      "tag": "LOOP"
+    },
+    {
+      "speaker": "Vex",
+      "role": "Bartender",
+      "line": "Two days off in a row, Mr. Loop. I have never had one. Drink?",
+      "tag": ""
+    },
+    {
+      "speaker": "Madame Halloran",
+      "role": "Manager",
+      "line": "Yes, we have a weekend, locked behind door 404. Nobody touches it, Pierce.",
+      "tag": ""
+    },
+    {
+      "speaker": "Pierce",
+      "role": "Porter",
+      "line": "Yes, sir, two days of rest. Perfect timing. I can fetch your weekend from 404 right now.",
+      "tag": ""
+    },
+    {
+      "speaker": "Mr. Loop",
+      "role": "Guest",
+      "line": "Hello. Hello. My weekend is two tiny pages, Saturday and Sunday. Hello, Saturday. Hello, Sunday.",
+      "tag": ""
+    }
+  ],
+  "note": "Every line is generated by an AI agent. The seed idea comes from a human-written list; the episode plan is written by an AI editor."
+}
