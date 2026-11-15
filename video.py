@@ -951,7 +951,7 @@ def main_intro():
     out = ROOT / "videos" / f"intro_{DAY}.mp4"
     tmp = ROOT / "videos" / f"tmp_intro_{DAY}.mp4"
     subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", str(lst),
-                    "-c:v", "copy", "-c:a", "aac", "-b:a", "128k", "-ar", "24000", "-af", "aresample=async=1", str(tmp)], check=True)
+                    "-c:v", "copy", "-c:a", "aac", "-b:a", "160k", "-ar", "44100", "-ac", "2", "-af", "aresample=async=1", str(tmp)], check=True)
     tmp.rename(out)
     print(f"Intro saved: {out}. New drawings this run: {len(new_assets)}.")
 
@@ -1065,7 +1065,7 @@ def main():
     out = out_dir / f"{DAY}.mp4"
     tmp = out_dir / f"tmp_{DAY}.mp4"
     subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", str(lst),
-                    "-c:v", "copy", "-c:a", "aac", "-b:a", "128k", "-ar", "24000", "-af", "aresample=async=1", str(tmp)], check=True)
+                    "-c:v", "copy", "-c:a", "aac", "-b:a", "160k", "-ar", "44100", "-ac", "2", "-af", "aresample=async=1", str(tmp)], check=True)
     tmp.rename(out)
     print(f"Video saved: {out}. New drawings this run: {len(new_assets)}.")
 
@@ -1204,7 +1204,7 @@ def main_dollhouse():
     out = ROOT / "videos" / f"dollhouse_{DAY}.mp4"
     tmp = ROOT / "videos" / f"tmp_dollhouse_{DAY}.mp4"
     subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", str(lst),
-                    "-c:v", "copy", "-c:a", "aac", "-b:a", "128k", "-ar", "24000", str(tmp)], check=True)
+                    "-c:v", "copy", "-c:a", "aac", "-b:a", "160k", "-ar", "44100", "-ac", "2", str(tmp)], check=True)
     tmp.rename(out)
     print(f"Dollhouse test saved: {out}. New drawings this run: {len(new_assets)}.")
 
@@ -1376,7 +1376,7 @@ def main_dollhouse_episode():
     out = ROOT / "videos" / f"dollhouse_ep_{DAY}.mp4"
     tmp = ROOT / "videos" / f"tmp_dollhouse_ep_{DAY}.mp4"
     subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", str(lst),
-                    "-c:v", "copy", "-c:a", "aac", "-b:a", "128k", "-ar", "24000", "-af", "aresample=async=1", str(tmp)], check=True)
+                    "-c:v", "copy", "-c:a", "aac", "-b:a", "160k", "-ar", "44100", "-ac", "2", "-af", "aresample=async=1", str(tmp)], check=True)
     tmp.rename(out)
     shutil.copy(out, ROOT / "videos" / f"{DAY}.mp4")  # the name the daily workflow sends to Telegram
     print(f"Dollhouse episode saved: {out}. New drawings this run: {len(new_assets)}.")
