@@ -66,7 +66,9 @@ PLANNER_RULES = (
     "MISUNDERSTAND (an agent misunderstands an instruction), FORGET (an agent forgets context), "
     "LOOP (an agent gets stuck in a loop), FAIL (a request fails). Give a TAG to two or three beats, leave the others without one.\n"
     "There must be exactly the requested number of BEAT lines: count them, the last one must be the requested number.  Use only the characters listed in the cast, "
-    "spelled exactly as listed. Every character in the cast speaks at least twice. No character speaks more than twice in a row."
+    "spelled exactly as listed. The two guests are the stars of the episode: each guest speaks at least twice, and their two agent "
+    "behaviors clash or combine in a funny way. Hotel staff appear only where the story needs them: one or two staff members are "
+    "enough, and a staff member may be left out completely. No character speaks more than twice in a row."
 )
 
 AGENT_TAGS = ("HANDOFF", "ASK", "MISUNDERSTAND", "FORGET", "LOOP", "FAIL")
@@ -165,7 +167,7 @@ def parse_plan(text, cast):
     return plan
 
 
-def check_plan(plan, cast, n):
+def check_plan(plan, cast, n, must=None):
     beats = plan["beats"]
     if not isinstance(beats, list) or len(beats) < 5:
         raise ValueError("too few beats")
@@ -185,8 +187,9 @@ def check_plan(plan, cast, n):
             others = [c for c in cast if c != fixed[i - 1]["speaker"]
                       and (i + 1 >= len(fixed) or c != fixed[i + 1]["speaker"])] or [c for c in cast if c != fixed[i - 1]["speaker"]]
             fixed[i]["speaker"] = min(others, key=lambda c: spoken.count(c))
-    missing = [c for c in cast if c not in {b["speaker"] for b in fixed}]
-    for k, c in enumerate(missing):  # every cast member speaks at least once
+    must = list(must) if must else list(cast)
+    missing = [c for c in must if c not in {b["speaker"] for b in fixed}]
+    for k, c in enumerate(missing):  # every required character (the guests) speaks at least once
         fixed[1 + k * 2]["speaker"] = c
     plan["beats"] = fixed
     plan["goals"] = {k: str(v) for k, v in (plan.get("goals") or {}).items() if k in cast}
@@ -198,8 +201,8 @@ def check_plan(plan, cast, n):
     return plan
 
 
-def plan_episode(chars, situation, guest, mystery, yesterday, n):
-    cast = list(chars["staff"]) + ([guest] if guest else [])
+def plan_episode(chars, situation, guests, mystery, yesterday, n):
+    cast = list(chars["staff"]) + list(guests)
     people = "\n".join(f"- {c} ({chars['all'][c]['role']}): {chars['all'][c]['persona']}" for c in cast)
     user_text = (
         f"Setting: {chars['hotel']}\n\nCast:\n{people}\n\n"
@@ -214,7 +217,7 @@ def plan_episode(chars, situation, guest, mystery, yesterday, n):
         reply = ""
         try:
             reply = call_claude(PLANNER_RULES, user_text, 6000)
-            plan = check_plan(parse_plan(reply, cast), cast, n)
+            plan = check_plan(parse_plan(reply, cast), cast, n, must=guests or None)
             plan["cast"] = cast
             return plan
         except (ValueError, KeyError, TypeError, AttributeError) as e:
@@ -294,16 +297,21 @@ def main():
     today = date.today().isoformat()
     rng = random.Random(f"{today}-{random.random()}" if preview else today)  # same day, same episode
     situation = rng.choice(config["situations"])
-    guest = rng.choice(sorted(guests)) if guests and rng.random() < 0.9 else None
+    # two guests per episode; a guest named in the seed idea is always one of them
+    named = [g for g in sorted(guests) if g in situation]
+    others = [g for g in sorted(guests) if g not in named]
+    rng.shuffle(others)
+    today_guests = (named + others)[:2]
     mystery = rng.random() < 0.2
     out_dir = ROOT / "transcripts"
     yesterday = yesterday_summary(out_dir, today)
 
     if MOCK:
-        plan = fallback_plan(situation, chars["staff"] + ([guest] if guest else []), BEATS)
-        plan["cast"] = chars["staff"] + ([guest] if guest else [])
+        cast = today_guests + chars["staff"]
+        plan = fallback_plan(situation, cast, BEATS)
+        plan["cast"] = cast
     else:
-        plan = plan_episode(chars, situation, guest, mystery, yesterday, BEATS)
+        plan = plan_episode(chars, situation, today_guests, mystery, yesterday, BEATS)
     transcript = build_scene(chars, plan, plan["premise"])
 
     if preview:
@@ -320,7 +328,8 @@ def main():
         "date": today,
         "title": plan["title"],
         "situation": plan["premise"],
-        "guest": guest,
+        "guest": today_guests[0] if today_guests else None,
+        "guests": today_guests,
         "plan": {"goals": plan["goals"], "secrets": plan["secrets"], "beats": plan["beats"]},
         "mock": MOCK,
         "model": "mock" if MOCK else MODEL,

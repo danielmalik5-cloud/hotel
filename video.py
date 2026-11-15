@@ -1283,10 +1283,14 @@ def main_dollhouse_episode():
         lift = 0.05 if band is lobby else 0.15  # the lobby sits low in the picture, so frame it a bit higher
         return (band[0] + band[1]) / 2 + lift * h0
 
-    guest = ep.get("guest")
-    homes = {"Pierce": ("lobby", 0.30), "Madame Halloran": ("lobby", 0.78), "Vex": ("bar", 0.68)}
+    guest_list = [g for g in (ep.get("guests") or [ep.get("guest")]) if g]
+    guest = guest_list[0] if guest_list else None
+    guest2 = guest_list[1] if len(guest_list) > 1 else None
+    homes = {"Pierce": ("lobby", 0.30), "Madame Halloran": ("lobby", 0.78), "Vex": ("bar", 0.70)}
     if guest in assets["robots"]:
         homes[guest] = ("lobby", 0.54)
+    if guest2 in assets["robots"]:
+        homes[guest2] = ("bar", 0.27)  # the second guest starts at the bar
     lines = ep["lines"]
     # where each character stands at each scene (index 1..n); Pierce walks to the hallway when he says so
     state = dict(homes)
@@ -1300,7 +1304,9 @@ def main_dollhouse_episode():
             if guest in state:
                 state[guest] = ("hall", 0.42)
         if who == guest and "bar" in txt and guest in state:
-            state[guest] = ("bar", 0.40)
+            state[guest] = ("bar", 0.49)
+        if who == guest2 and guest2 in state and ("lobby" in txt or "desk" in txt or "reception" in txt):
+            state[guest2] = ("lobby", 0.54 if state.get(guest, ("", 0))[0] != "lobby" else 0.42)
         if who not in state:
             state[who] = ("lobby", 0.5)
         poses.append(dict(state))
