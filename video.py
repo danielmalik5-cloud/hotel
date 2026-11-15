@@ -49,7 +49,8 @@ API = "https://generativelanguage.googleapis.com/v1beta/models/{}:generateConten
 VOICES = {"Pierce": "Puck", "Vex": "Charon", "Madame Halloran": "Kore", "Narrator": "Orus",
           "Mr. Loop": "Fenrir", "Ms. Context": "Aoede",
           "Sir Hallucinate": "Algieba", "Lady Token": "Gacrux", "The Twins": "Achird", "Dr. Retry": "Sadachbia",
-          "Miss Agentic": "Zephyr"}
+          "Miss Agentic": "Zephyr", "Mr. Cache": "Iapetus", "Captain Timeout": "Alnilam",
+          "Madame Prompt-Injection": "Despina", "Baby Bot": "Leda", "The Critic": "Rasalgethi"}
 FONT_B = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 FONT_S = "/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf"
 ST = 'stroke="#000" stroke-width="8" stroke-linejoin="round" stroke-linecap="round"'
@@ -376,12 +377,6 @@ GUESTS = {
                   "white lab coat, a round circular-arrow refresh symbol on his chest, holding a clipboard full of crossed-out lines." + NOCOL),
     "Miss Agentic": ("a bossy, energetic robot lady guest: sleek teal and white metal body, glowing yellow LED face with a confident smile, "
                      "headset microphone, orange blazer, holding a clipboard and pointing forward as if giving orders." + NOCOL),
-}
-# Guests waiting for approval: drawn only by the GUEST_PREVIEW=1 run, not used in episodes until
-# they are moved into GUESTS (and characters.json) after the owner approves them on Telegram.
-# Guests waiting for approval: drawn only by the GUEST_PREVIEW=1 run ("Draw new guests"), not used in
-# episodes until they are moved into GUESTS (and characters.json) after the owner approves them.
-NEW_GUESTS = {
     "Mr. Cache": ("a cheerful, outdated robot gentleman guest: chunky beige retro-computer metal body, round head with a glowing "
                   "amber LED face, small floppy-disk badge on his chest, brown tweed jacket covered in faded old luggage stickers, "
                   "holding an old paper map." + NOCOL),
@@ -397,6 +392,11 @@ NEW_GUESTS = {
     "The Critic": ("a snooty, thin robot critic guest: tall slim dark grey metal body, glowing white LED face with one raised eyebrow, "
                    "black turtleneck and a beige scarf, holding up a score card with the number 7." + NOCOL),
 }
+# Guests waiting for approval: drawn only by the GUEST_PREVIEW=1 run, not used in episodes until
+# they are moved into GUESTS (and characters.json) after the owner approves them on Telegram.
+# Guests waiting for approval: drawn only by the GUEST_PREVIEW=1 run ("Draw new guests"), not used in
+# episodes until they are moved into GUESTS (and characters.json) after the owner approves them.
+NEW_GUESTS = {}
 STATES = {
     "base": "Neutral expression, mouth closed, eyes open.",
     "talk": "Change ONLY the mouth: wide open as if speaking. Keep everything else pixel-identical.",
@@ -457,7 +457,9 @@ def angle_keys(name):
 PLACE_FOR = {"Pierce": ["lobby", "hallway"], "Vex": ["bar"], "Madame Halloran": ["reception", "elevator"],
              "Mr. Loop": ["lobby", "reception"], "Ms. Context": ["lobby", "hallway"],
              "Sir Hallucinate": ["lobby", "bar"], "Lady Token": ["reception", "bar"], "The Twins": ["lobby", "hallway"],
-             "Dr. Retry": ["elevator", "hallway"], "Miss Agentic": ["reception", "lobby"]}
+             "Dr. Retry": ["elevator", "hallway"], "Miss Agentic": ["reception", "lobby"],
+             "Mr. Cache": ["reception", "lobby"], "Captain Timeout": ["lobby", "elevator"],
+             "Madame Prompt-Injection": ["reception", "bar"], "Baby Bot": ["lobby", "hallway"], "The Critic": ["bar", "lobby"]}
 HEIGHT = 1000  # standard sprite height in pixels
 _images_made = 0
 new_assets = []
