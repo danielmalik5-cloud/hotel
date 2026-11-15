@@ -1502,17 +1502,28 @@ def main_dollhouse_episode():
         if states is not None:
             assets["robots"][g] = states
     ep = json.loads((ROOT / "transcripts" / f"{DAY}.json").read_text(encoding="utf-8"))
-    bg0 = cover_crop(pa)
     top = cover_crop(pc) if pc.exists() else None
-    bands = find_floor_bands(bg0)
-    # the building ends at the lobby floor bar; below it a dark stone base gives the camera room
-    hall, bar, lobby = bands[0], bands[-2], bands[-1]
+    pa5 = d / "places" / "dollhouse_a5.png"
+    five = False
+    if pa5.exists():  # five floors: lobby, bar, dining room, 404 hallway, rooftop terrace
+        im5 = Image.open(pa5).convert("RGB")
+        bg0 = im5.resize((W, int(im5.height * W / im5.width)), Image.LANCZOS).convert("RGBA")
+        bands = find_floor_bands_any(bg0)
+        five = len(bands) == 5
+    if not five:
+        bg0 = cover_crop(pa)
+        bands = find_floor_bands(bg0)
     Z = 1.8
     h0 = H / Z
     TP = int(0.16 * H)  # dark roof space above, so the top floor can sit in the middle of the screen
     bands = [(a0 + TP, b0 + TP) for a0, b0 in bands]
-    hall, bar, lobby = bands[0], bands[-2], bands[-1]
-    cut = min(H, lobby[1] - TP + 24)
+    if five:
+        floors = dict(zip(("terrace", "hall", "dining", "bar", "lobby"), bands))
+    else:
+        floors = {"hall": bands[0], "bar": bands[-2], "lobby": bands[-1]}
+    lobby = floors["lobby"]
+    # the building ends at the lobby floor bar; below it a dark stone base gives the camera room
+    cut = min(bg0.height, lobby[1] - TP + 24)
     CH = int(max(TP + H, (lobby[0] + lobby[1]) / 2 + 0.05 * h0 + h0 / 2) + 4)
     bg = Image.new("RGBA", (W, CH), (26, 18, 13, 255))
     bg.paste(bg0.crop((0, 0, W, cut)), (0, TP))
@@ -1523,8 +1534,7 @@ def main_dollhouse_episode():
         cx = min(max(cxs * W, w0 / 2), W - w0 / 2)
         cy = min(max(cy, h1 / 2), CH - h1 / 2)
         return frame.resize((W, H), Image.BICUBIC, box=(cx - w0 / 2, cy - h1 / 2, cx + w0 / 2, cy + h1 / 2))
-    print("Floor bands:", bands)
-    floors = {"hall": hall, "bar": bar, "lobby": lobby}
+    print("Floor bands:", floors)
 
     def cam_y(band):
         lift = 0.05 if band is lobby else 0.15  # the lobby sits low in the picture, so frame it a bit higher
@@ -1533,29 +1543,49 @@ def main_dollhouse_episode():
     guest_list = [g for g in (ep.get("guests") or [ep.get("guest")]) if g]
     guest = guest_list[0] if guest_list else None
     guest2 = guest_list[1] if len(guest_list) > 1 else None
+    SLOTS = {"lobby": [0.30, 0.54, 0.78, 0.42, 0.66], "bar": [0.27, 0.49, 0.70], "dining": [0.30, 0.52, 0.74],
+             "hall": [0.20, 0.42, 0.68], "terrace": [0.32, 0.55, 0.76]}
+
+    def place(state, who, fl):
+        """Put a character on a floor, in the first spot nobody else is standing on."""
+        if fl not in floors:
+            return
+        taken = [x for k, (f, x) in state.items() if f == fl and k != who]
+        for x in SLOTS[fl]:
+            if all(abs(x - t) > 0.15 for t in taken):
+                state[who] = (fl, x)
+                return
+        state[who] = (fl, SLOTS[fl][-1])
+
     homes = {"Pierce": ("lobby", 0.30), "Madame Halloran": ("lobby", 0.78), "Vex": ("bar", 0.70)}
     if guest in assets["robots"]:
         homes[guest] = ("lobby", 0.54)
     if guest2 in assets["robots"]:
-        homes[guest2] = ("bar", 0.27)  # the second guest starts at the bar
+        start = ["bar", "dining", "terrace"][sum(map(ord, DAY)) % 3] if five else "bar"  # varies from day to day
+        place(homes, guest2, start)
+    MOVES = [("terrace", ("terrace", "rooftop", "roof", "stars", "the sky")),
+             ("dining", ("dining", "dinner", "restaurant", "breakfast", "lunch", "menu", "chef", "table")),
+             ("hall", ("hallway", "404", "corridor", "upstairs")),
+             ("bar", (" bar", "cocktail")),
+             ("lobby", ("lobby", "front desk", "reception", "check in", "check-in"))]
     lines = ep["lines"]
-    # where each character stands at each scene (index 1..n); Pierce walks to the hallway when he says so
+    # where each character stands at each scene: a speaker walks to a place when the line mentions it
     state = dict(homes)
     poses = []
     for l in lines:
-        who, txt = l["speaker"], l["line"].lower()
-        if who == "Pierce" and "hallway" in txt:
-            state["Pierce"] = ("hall", 0.20)
+        who, txt = l["speaker"], " " + l["line"].lower()
         if who == "Madame Halloran" and ("key" in txt or "door" in txt):
-            state["Madame Halloran"] = ("hall", 0.68)
+            place(state, "Madame Halloran", "hall")
             if guest in state:
-                state[guest] = ("hall", 0.42)
-        if who == guest and "bar" in txt and guest in state:
-            state[guest] = ("bar", 0.49)
-        if who == guest2 and guest2 in state and ("lobby" in txt or "desk" in txt or "reception" in txt):
-            state[guest2] = ("lobby", 0.54 if state.get(guest, ("", 0))[0] != "lobby" else 0.42)
+                place(state, guest, "hall")
+        else:
+            for fl, words in MOVES:
+                if fl in floors and any(w in txt for w in words):
+                    if not (who == "Vex" and fl == "bar") and state.get(who, ("", 0))[0] != fl:
+                        place(state, who, fl)
+                    break
         if who not in state:
-            state[who] = ("lobby", 0.5)
+            place(state, who, "lobby")
         poses.append(dict(state))
 
     def target(pose, speaker):
@@ -1568,7 +1598,7 @@ def main_dollhouse_episode():
                 continue
             band = floors[fl]
             bh = band[1] - band[0]
-            fy = band[1] - (0.02 if fl == "hall" else 0.10) * bh
+            fy = band[1] - (0.02 if (fl == "hall" and not five) else 0.10) * bh
             speaking = who == speaker
             face = "talk" if (speaking and level > 0) else ("blink" if blink else "base")
             canvas, pad_h, sp_w = sprite(assets, who, face, 0.72 * bh / HEIGHT)
