@@ -671,7 +671,7 @@ def sprite(assets, name, state, scale):
             _sprite_cache.clear()
         _sprite_cache[key] = (canvas, pad_h, sp.width)
     return _sprite_cache[key]
-
+  
 
 def shadow(width):
     key = int(width // 10)
@@ -973,8 +973,7 @@ def main():
                         str(work / "pv.txt"), "-c", "copy",
                         str(ROOT / "videos" / f"00_new_drawings_{DAY}.mp4")], check=True)
 
-    scenes.append(make_scene(work, 0, "Narrator", "", "Tonight at the Token Hotel: " + ep["situation"],
-                             "Narrator", make_renderer("lobby", None, None, 0), min_len=3))
+    # no narrator opening: the episode starts straight on the first line (the hook)
     prev = None
     for i, l in enumerate(ep["lines"], start=1):
         who = l["speaker"]
@@ -1262,8 +1261,7 @@ def main_dollhouse_episode():
         draw_cast(frame, first_pose, None, 0, blink, i / FPS)
         return Image.alpha_composite(view(frame, 1.0 + 0.8 * k, 0.5, (TP + H / 2) + 0.2 * k * H), vignette())
 
-    scenes.append(make_scene(work, 0, "Narrator", "", "Tonight at the Token Hotel: " + ep["situation"],
-                             "Narrator", open_render, min_len=4))
+    # no narrator opening: the episode starts straight on the first line (the hook), the camera glides in
     prev_target = (1.0, 0.5, (TP + H / 2))
     for idx, l in enumerate(lines, start=1):
         who = l["speaker"]
