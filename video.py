@@ -362,6 +362,23 @@ GUESTS = {
                     "oval head with a glowing LED face with wide confused eyes, a large floppy sun hat with a small sticky note on it, "
                     "yellow travel coat, holding a travel bag, a tiny question mark floating near her head"),
 }
+NOCOL = " Important: use NO magenta, pink or purple colors anywhere on the character"
+# Guests waiting for approval: drawn only by the GUEST_PREVIEW=1 run, not used in episodes until
+# they are moved into GUESTS (and characters.json) after the owner approves them on Telegram.
+NEW_GUESTS = {
+    "Sir Hallucinate": ("a confident, pompous gentleman robot guest: round bronze metal body, monocle over one glowing blue LED eye, "
+                        "big curled metal moustache, dark green tailcoat with a medal he invented himself, chest puffed out, "
+                        "a speech-bubble-shaped badge on his lapel." + NOCOL),
+    "Lady Token": ("a rich, stingy robot lady guest: gleaming gold metal body, glowing teal LED face with narrowed thrifty eyes, "
+                   "pearl necklace made of small round coins, elegant dark blue gown, holding a tiny coin purse tightly." + NOCOL),
+    "The Twins": ("two identical small robot twins standing side by side: round white and light blue metal bodies, "
+                  "the left one has a question mark on its chest, the right one has an exclamation mark on its chest, "
+                  "matching orange bow ties, glowing cyan LED faces, holding hands." + NOCOL),
+    "Dr. Retry": ("a stubborn, cheerful robot doctor guest: boxy grey metal body with dents and bandages, glowing green LED face, "
+                  "white lab coat, a round circular-arrow refresh symbol on his chest, holding a clipboard full of crossed-out lines." + NOCOL),
+    "Miss Agentic": ("a bossy, energetic robot lady guest: sleek teal and white metal body, glowing yellow LED face with a confident smile, "
+                     "headset microphone, orange blazer, holding a clipboard and pointing forward as if giving orders." + NOCOL),
+}
 STATES = {
     "base": "Neutral expression, mouth closed, eyes open.",
     "talk": "Change ONLY the mouth: wide open as if speaking. Keep everything else pixel-identical.",
@@ -428,7 +445,7 @@ new_assets = []
 
 def bg_of(name):
     """Guests drawn from now on use a magenta background (a pink/blue-grey face cannot be confused with it)."""
-    return "magenta" if (name in GUESTS and name != "Ms. Context") else "green"
+    return "magenta" if ((name in GUESTS or name in NEW_GUESTS) and name != "Ms. Context") else "green"
 
 
 def slug_of(name):
@@ -529,6 +546,37 @@ def make_angle_assets():
                       "Vertical 9:16 composition, eye-level camera, the floor visible across the lower third, "
                       "lower third calm and uncluttered. No people or characters, no text.",
                       d / "places" / f"{name}_{suffix}.png", reference=base)
+
+
+def main_guest_preview():
+    """Draw the guests waiting for approval and save one preview sheet for Telegram."""
+    global MAX_IMAGES
+    MAX_IMAGES = max(MAX_IMAGES, 3 * len(NEW_GUESTS))
+    d = assets_dir()
+    for name, desc in NEW_GUESTS.items():
+        make_robot_images(d, name, desc)
+    bgc = (42, 31, 24)
+    names = list(NEW_GUESTS)
+    sheet = Image.new("RGB", (W, H), bgc)
+    dr = ImageDraw.Draw(sheet)
+    dr.text((W // 2, 70), "NEW GUESTS (for approval)", font=ImageFont.truetype(FONT_B, 50), fill=(230, 190, 110), anchor="mm")
+    cols, cw = 3, W // 3
+    for k, name in enumerate(names):
+        x0, y0 = (k % cols) * cw, 150 + (k // cols) * 880
+        dr.text((x0 + cw // 2, y0 + 20), f"{k + 1}. {name}", font=ImageFont.truetype(FONT_B, 32), fill=(255, 255, 255), anchor="mm")
+        st = load_robot(d, name)
+        if st is None:
+            dr.text((x0 + cw // 2, y0 + 400), "(not drawn)", font=ImageFont.truetype(FONT_B, 30), fill=(200, 120, 120), anchor="mm")
+            continue
+        sp = st["base"]
+        sp = sp.resize((max(1, int(sp.width * 760 / sp.height)), 760), Image.LANCZOS)
+        if sp.width > cw - 20:
+            sp = sp.resize((cw - 20, max(1, int(sp.height * (cw - 20) / sp.width))), Image.LANCZOS)
+        sheet.paste(sp, (x0 + cw // 2 - sp.width // 2, y0 + 820 - sp.height), sp)
+    (ROOT / "videos").mkdir(exist_ok=True)
+    out = ROOT / "videos" / "guests_preview.png"
+    sheet.save(out)
+    print(f"Guest preview saved: {out}. New drawings this run: {len(new_assets)}.")
 
 
 def make_guest_assets():
@@ -1385,6 +1433,8 @@ def qa_main():
 if __name__ == "__main__":
     if os.environ.get("QA") == "1":
         qa_main()
+    elif os.environ.get("GUEST_PREVIEW") == "1":
+        main_guest_preview()
     elif os.environ.get("ANGLES") == "1":
         main_angles()
     elif os.environ.get("INTRO") == "1":
