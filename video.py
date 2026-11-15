@@ -1154,6 +1154,32 @@ DOLLHOUSE_PROMPTS = {
         "lively garden: many round green trees seen from above, trimmed hedges, flower beds, a small fountain, gravel paths "
         "and a lawn. Warm light, tiny cozy details. No people, no characters, no text."),
 }
+DOLLHOUSE_V2_PROMPT = (
+    "Edit this image: keep the same cutaway hotel, the same art style, colors and warm light. Make it FIVE floors, "
+    "all the same height, each a wide open room with a flat floor line along its bottom edge and thin dark dividers between "
+    "floors. From the bottom: 1) the same grand lobby with the reception desk and checkered floor, 2) the same bar with "
+    "glowing bottles and stools, 3) replace the empty hallway with an elegant hotel dining room: round tables with white "
+    "tablecloths and candles, a small crystal chandelier, 4) the same hallway with the glowing door numbered 404, "
+    "5) on the very top, an open-air rooftop terrace under an evening sky: wrought-iron cafe tables and chairs, strings of "
+    "warm lights, potted plants and a stone balustrade. Vertical 9:16. No people, no characters, no text except the door number.")
+
+
+def main_dollhouse_v2():
+    """Draw two candidates of the five-floor dollhouse (dining room + rooftop terrace) for approval."""
+    global MAX_IMAGES
+    MAX_IMAGES = max(MAX_IMAGES, 2)
+    d = assets_dir()
+    base = d / "places" / "dollhouse_a.png"
+    (ROOT / "videos").mkdir(exist_ok=True)
+    for k in (1, 2):
+        out = d / "places" / f"dollhouse_a5_{k}.png"
+        gen_image(DOLLHOUSE_V2_PROMPT, out, reference=base)
+        if out.exists():
+            bands = find_floor_bands(cover_crop(out))
+            print(f"Candidate {k}: {len(bands)} floors found: {bands}")
+            shutil.copy(out, ROOT / "videos" / f"dollhouse_a5_{k}.png")
+
+
 DOLLHOUSE_TEXT = [
     "Welcome to the Token Hotel. Zero humans. Plenty of robots.",
     "In the bar, Vex is polishing the same glass again.",
@@ -1507,6 +1533,8 @@ def qa_main():
 if __name__ == "__main__":
     if os.environ.get("QA") == "1":
         qa_main()
+    elif os.environ.get("DOLLHOUSE_V2") == "1":
+        main_dollhouse_v2()
     elif os.environ.get("GUEST_PREVIEW") == "1":
         main_guest_preview()
     elif os.environ.get("ANGLES") == "1":
