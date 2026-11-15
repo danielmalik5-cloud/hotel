@@ -54,7 +54,8 @@ PLANNER_RULES = (
     "narrator or introduction before it: a character says the strangest, funniest or most mysterious thing of the episode, "
     "as a short question or claim that makes a viewer who is scrolling past stop, and that also makes tonight's problem clear. Keep it family friendly with no real people, brands or politics.\n"
     "Reply with ONLY plain text lines in exactly this format, nothing else, no markdown:\n"
-    "TITLE: short episode title\n"
+    "TITLE: the episode title as a short, curious question that a viewer wants answered, at most 8 words, ending with a question mark "
+    "(for example: Can a robot porter lose an entire room?)\n"
     "PREMISE: one plain sentence, at most 20 words, that sets up tonight's story\n"
     "GOAL <character>: what this character secretly wants in this episode (one line per character)\n"
     "SECRET <character>: one small secret or hidden problem (optional, only for some characters)\n"
@@ -125,7 +126,7 @@ def mock_line(name, i):
 
 def fallback_plan(situation, cast, n):
     """Used if the planner fails: a plain round-robin scene, like the old engine."""
-    return {"title": "A night at the hotel", "premise": situation, "goals": {}, "secrets": {},
+    return {"title": "What will go wrong at the hotel?", "premise": situation, "goals": {}, "secrets": {},
             "beats": [{"speaker": cast[i % len(cast)], "intent": "Continue the scene."} for i in range(n)]}
 
 
@@ -190,7 +191,7 @@ def check_plan(plan, cast, n):
     plan["beats"] = fixed
     plan["goals"] = {k: str(v) for k, v in (plan.get("goals") or {}).items() if k in cast}
     plan["secrets"] = {k: str(v) for k, v in (plan.get("secrets") or {}).items() if k in cast and v}
-    plan["title"] = str(plan.get("title", "")).strip() or "A night at the hotel"
+    plan["title"] = str(plan.get("title", "")).strip() or "What will go wrong at the hotel?"
     plan["premise"] = str(plan.get("premise", "")).strip()
     if not plan["premise"]:
         raise ValueError("no premise")

@@ -183,8 +183,9 @@ AGENT_MOMENT = {
 }
 
 
-def overlay(name, role, text, hl=-1, tag=""):
-    """Caption bar. hl = index of the word being spoken (shown in gold), -1 for none."""
+def overlay(name, role, text, hl=-1, tag="", banner=""):
+    """Caption bar. hl = index of the word being spoken (shown in gold), -1 for none.
+    banner = episode title for the opening card ('A hotel run by AI agents' + the title), empty for none."""
     ov = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     d = ImageDraw.Draw(ov)
     d.rectangle((0, 1500, W, 1870), fill=(0, 0, 0, 190))
@@ -200,7 +201,22 @@ def overlay(name, role, text, hl=-1, tag=""):
         d.rounded_rectangle((W // 2 - tw / 2 - 30, 172, W // 2 + tw / 2 + 30, 172 + fs + 34), radius=26,
                             fill=(230, 190, 110, 235))
         d.text((W // 2, 172 + (fs + 34) // 2), msg, font=bf, fill=(30, 20, 12), anchor="mm")
-    d.text((60, 1530), name + (f"  \u00b7  {role}" if role else ""),
+    if banner:  # opening card: tells a first-time viewer what this is
+        f1 = ImageFont.truetype(FONT_B, 50)
+        d.rounded_rectangle((60, 260, W - 60, 300 + 62), radius=30, fill=(230, 190, 110, 240))
+        d.text((W // 2, 311), "A HOTEL RUN BY AI AGENTS", font=f1, fill=(30, 20, 12), anchor="mm")
+        for fs in (64, 56, 48, 42):
+            f2 = ImageFont.truetype(FONT_B, fs)
+            tl = wrap(d, "Tonight: " + banner, f2, W - 160)
+            if len(tl) <= 2:
+                break
+        y2 = 400
+        box_h = len(tl) * int(fs * 1.25) + 40
+        d.rounded_rectangle((60, y2, W - 60, y2 + box_h), radius=30, fill=(0, 0, 0, 175))
+        for i, ln in enumerate(tl):
+            d.text((W // 2, y2 + 20 + int(fs * 1.25) * i + fs // 2 + 4), ln, font=f2, fill=(255, 255, 255), anchor="mm")
+    shown_role = ("AI " + role.lower()) if role else ""  # every character is an AI agent: say so on screen
+    d.text((60, 1530), name + (f"  \u00b7  {shown_role}" if shown_role else ""),
            font=ImageFont.truetype(FONT_B, 42), fill=(230, 190, 110))
     for size in (68, 60, 52, 46):
         font = ImageFont.truetype(FONT_B, size)
@@ -244,6 +260,7 @@ def post(model, payload):
         return json.load(r)
 
 
+OPENING_LINE = "Everyone in this hotel is an AI agent."  # short context for first-time viewers (voice is cached after day one)
 NARRATOR_STYLE = "Read this aloud as a calm, warm, steady storyteller, at an even pace: "
 
 
@@ -740,7 +757,7 @@ def render_ai(assets, ctx, i, n, level, blink):
 
 
 # ---------------------------------------------------------------- video# ---- part 2 of the file ----
-def make_scene(work, idx, name, role, text, voice_as, renderer, min_len=2.0, pad=0.5, tag=""):
+def make_scene(work, idx, name, role, text, voice_as, renderer, min_len=2.0, pad=0.5, tag="", banner=""):
     wav, mp4 = work / f"{idx:02d}.wav", work / f"{idx:02d}.mp4"
     dur = gen_voice(text, voice_as, wav) if voice_as else None
     has_voice = dur is not None
@@ -751,7 +768,7 @@ def make_scene(work, idx, name, role, text, voice_as, renderer, min_len=2.0, pad
     talking = name not in ("Narrator",)
     levels = mouth_levels(wav if has_voice else None, n, text) if talking else [0] * n
     nwords = len(text.split())
-    ovs = [overlay(name, role, text, hl=k, tag=tag) for k in range(nwords)] or [overlay(name, role, text, tag=tag)]
+    ovs = [overlay(name, role, text, hl=k, tag=tag, banner=banner) for k in range(nwords)] or [overlay(name, role, text, tag=tag, banner=banner)]
     starts = word_starts(text, dur)
     frames = work / f"f{idx:02d}"
     frames.mkdir(exist_ok=True)
@@ -973,7 +990,10 @@ def main():
                         str(work / "pv.txt"), "-c", "copy",
                         str(ROOT / "videos" / f"00_new_drawings_{DAY}.mp4")], check=True)
 
-    # no narrator opening: the episode starts straight on the first line (the hook)
+    # short opening: one narrator sentence of context with the title card, then straight into the hook
+    scenes.append(make_scene(work, 0, "Narrator", "", OPENING_LINE, "Narrator",
+                             make_renderer("lobby", None, None, 0), min_len=2.5, pad=0.2,
+                             banner=ep.get("title", "")))
     prev = None
     for i, l in enumerate(ep["lines"], start=1):
         who = l["speaker"]
@@ -1261,7 +1281,9 @@ def main_dollhouse_episode():
         draw_cast(frame, first_pose, None, 0, blink, i / FPS)
         return Image.alpha_composite(view(frame, 1.0 + 0.8 * k, 0.5, (TP + H / 2) + 0.2 * k * H), vignette())
 
-    # no narrator opening: the episode starts straight on the first line (the hook), the camera glides in
+    # short opening: one narrator sentence of context with the title card over the view from above, then the hook
+    scenes.append(make_scene(work, 0, "Narrator", "", OPENING_LINE, "Narrator", open_render, min_len=2.5, pad=0.2,
+                             banner=ep.get("title", "")))
     prev_target = (1.0, 0.5, (TP + H / 2))
     for idx, l in enumerate(lines, start=1):
         who = l["speaker"]
