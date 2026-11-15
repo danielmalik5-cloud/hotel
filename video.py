@@ -1231,6 +1231,43 @@ def _wall_frame(arr):
     return int(cols.min()), int(cols.max())
 
 
+def _add_hall_floor(hall, ext=78):
+    """The original hallway has no visible floor (the doors run into the divider). Draw a short
+    perspective floor below it: door bottoms, dark baseboards on the side walls and a red carpet."""
+    import numpy as np
+    w, h = hall.size
+    out = Image.new("RGB", (w, h + ext))
+    out.paste(hall, (0, 0))
+    edge = hall.crop((0, h - 2, w, h - 1))
+    out.paste(edge.resize((w, ext)), (0, h))  # margin, outer wall and side walls continue down
+    out.paste(edge.resize((w, 12)), (0, h))  # let the doors and walls run a little lower
+    dr = ImageDraw.Draw(out)
+    yb, yf = h + 12, h + ext  # back edge of the floor, front edge
+    bl, br, fl, fr = 215, 865, 67, 1013  # back-wall corners and inner side-wall edges (1080 wide drawing)
+    dr.polygon([(fl, h), (bl, h), (bl, yb), (fl, yf)], fill=(86, 31, 14))  # left wall baseboard
+    dr.polygon([(br, h), (fr, h), (fr, yf), (br, yb)], fill=(86, 31, 14))  # right wall baseboard
+    floor = Image.new("RGB", (w, ext), 0)
+    fa = np.zeros((ext, w, 3), dtype=np.uint8)
+    for y in range(ext):
+        k = y / max(1, ext - 1)
+        fa[y, :] = (int(128 + 42 * k), int(34 + 10 * k), int(24 + 6 * k))  # red carpet, lighter toward the front
+    floor = Image.fromarray(fa)
+    mask = Image.new("L", (w, ext + 12), 0)
+    ImageDraw.Draw(mask).polygon([(bl, 12), (br, 12), (fr, ext + 12), (fl, ext + 12)], fill=255)
+    out.paste(floor, (0, h + 12), mask.crop((0, 12, w, ext + 12)))
+    glow = Image.new("L", out.size, 0)
+    ImageDraw.Draw(glow).ellipse((430, yb - 10, 650, yf + 30), fill=90)
+    glow = glow.filter(ImageFilter.GaussianBlur(22))
+    out = Image.composite(Image.new("RGB", out.size, (255, 190, 90)), out, glow)
+    dr = ImageDraw.Draw(out)
+    dr.line([(bl, yb), (br, yb)], fill=(40, 14, 6), width=4)  # where the back wall meets the floor
+    dr.line([(bl, yb), (fl, yf)], fill=(40, 14, 6), width=4)
+    dr.line([(br, yb), (fr, yf)], fill=(40, 14, 6), width=4)
+    dr.line([(bl, h), (bl, yb)], fill=(40, 14, 6), width=3)
+    dr.line([(br, h), (br, yb)], fill=(40, 14, 6), width=3)
+    return out
+
+
 def compose_dollhouse5(base, bands, dining, terrace):
     """Stack: terrace / 404 hallway / dining room / bar / lobby. The 404 hallway is the full-height middle hallway
     of the original with the glowing 404 door copied in (the original top floor is cut off at its bottom).
@@ -1268,6 +1305,7 @@ def compose_dollhouse5(base, bands, dining, terrace):
     hall = Image.composite(Image.new("RGB", hall.size, (255, 196, 90)), hall, glow)
     hall.paste(panel, (x0, hy0))
 
+    hall = _add_hall_floor(hall)
     divider = base.crop((0, hall404_band[1], base.width, hall_band[0]))
     parts = [fit(terrace), divider, hall, divider, fit(dining), divider,
              base.crop((0, bar_band[0], base.width, base.height))]
