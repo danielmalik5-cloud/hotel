@@ -658,15 +658,52 @@ def key_out_green(im, mode="green"):
         bg = mask.point(lambda v: 255 if v == 128 else 0)  # 255 = background
     bg = bg.resize((w, h), Image.BILINEAR).point(lambda v: 255 if v >= 128 else 0)
     alpha = bg.point(lambda v: 255 - v)
-    alpha = alpha.filter(ImageFilter.MinFilter(3)).filter(ImageFilter.GaussianBlur(0.8))
-    # remove green fringe only along the edge of the character
-    r, g, b = full.split()
-    despilled = Image.merge("RGB", (r, ImageChops.darker(g, ImageChops.lighter(r, b)), b))
-    band = ImageChops.subtract(alpha, alpha.filter(ImageFilter.MinFilter(9)))
-    rgb = Image.composite(despilled, full, band)
-    out = Image.merge("RGBA", (*rgb.split(), alpha))
+    if mode == "magenta":
+        out = _clean_magenta(full, alpha)
+        alpha = out.getchannel("A")
+    else:
+        alpha = alpha.filter(ImageFilter.MinFilter(3)).filter(ImageFilter.GaussianBlur(0.8))
+        # remove green fringe only along the edge of the character
+        r, g, b = full.split()
+        despilled = Image.merge("RGB", (r, ImageChops.darker(g, ImageChops.lighter(r, b)), b))
+        band = ImageChops.subtract(alpha, alpha.filter(ImageFilter.MinFilter(9)))
+        rgb = Image.composite(despilled, full, band)
+        out = Image.merge("RGBA", (*rgb.split(), alpha))
     box = alpha.point(lambda v: 255 if v > 40 else 0).getbbox()
     return out.crop(box) if box else out
+
+
+def _clean_magenta(full, alpha):
+    """Magenta-background characters contain no magenta, pink or purple, so any clearly magenta
+    pixel left anywhere (gaps, shadows, outlines) is background. Edges get the magenta tint removed."""
+    import numpy as np
+    rgb = np.asarray(full.convert("RGB"), dtype=np.int16)
+    r, g, b = rgb[..., 0], rgb[..., 1], rgb[..., 2]
+    m = np.minimum(r, b) - g  # how much "magenta" a pixel has: red and blue both above green
+    balanced = np.abs(r - b) <= 0.35 * np.maximum(np.maximum(r, b), 1)  # magenta/pink has red close to blue
+    m = np.where(balanced, m, np.minimum(m, 10))  # burgundy, red or blue clothes are not magenta
+    a = np.asarray(alpha, dtype=np.int16)
+    a = np.where(m > 38, 0, a)  # clearly magenta: background, wherever it is
+    a = np.asarray(Image.fromarray(a.astype("uint8")).filter(ImageFilter.MinFilter(5)), dtype=np.int16)
+    # soft fade for pinkish edge pixels
+    edge = a - np.asarray(Image.fromarray(a.astype("uint8")).filter(ImageFilter.MinFilter(13)), dtype=np.int16)
+    fade = np.clip((m - 12) * 8, 0, 255)
+    a = np.where(edge > 0, np.clip(a - fade, 0, 255), a)
+    # spill suppression: take the magenta part out of the colour near the edge
+    near = np.asarray(Image.fromarray(edge.clip(0, 255).astype("uint8")).filter(ImageFilter.MaxFilter(7)), dtype=np.int16) > 0
+    sub = np.where(near & (m > 0), m, 0)
+    rgb2 = rgb.copy()
+    rgb2[..., 0] = r - sub
+    rgb2[..., 2] = b - sub
+    # drop tiny stray specks away from the character (they also spoil the crop box)
+    solid = Image.fromarray((a > 40).astype("uint8") * 255).filter(ImageFilter.MinFilter(7)).filter(ImageFilter.MaxFilter(25))
+    a = np.where(np.asarray(solid) > 0, a, 0)
+    a[:8, :] = 0  # the image model sometimes draws a thin grey frame line at the picture edge
+    a[-8:, :] = np.where(a[-8:, :] > 0, a[-8:, :], 0)
+    a[:, :8] = 0
+    a[:, -8:] = 0
+    al = Image.fromarray(a.clip(0, 255).astype("uint8")).filter(ImageFilter.GaussianBlur(0.8))
+    return Image.merge("RGBA", (*Image.fromarray(rgb2.clip(0, 255).astype("uint8")).split(), al))
 
 
 def load_robot(d, name):
