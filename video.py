@@ -47,7 +47,9 @@ MAX_IMAGES = int(os.environ.get("MAX_IMAGES", "20"))
 API = "https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent"
 
 VOICES = {"Pierce": "Puck", "Vex": "Charon", "Madame Halloran": "Kore", "Narrator": "Orus",
-          "Mr. Loop": "Fenrir", "Ms. Context": "Aoede"}
+          "Mr. Loop": "Fenrir", "Ms. Context": "Aoede",
+          "Sir Hallucinate": "Algieba", "Lady Token": "Gacrux", "The Twins": "Achird", "Dr. Retry": "Sadachbia",
+          "Miss Agentic": "Zephyr"}
 FONT_B = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 FONT_S = "/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf"
 ST = 'stroke="#000" stroke-width="8" stroke-linejoin="round" stroke-linecap="round"'
@@ -353,6 +355,7 @@ ROBOTS = {
                         "silver hair bun made of fine metal wires, cat-eye glasses on a chain, "
                         "disapproving glowing LED face, hands clasped in front"),
 }
+NOCOL = " Important: use NO magenta, pink or purple colors anywhere on the character"
 GUESTS = {
     "Mr. Loop": ("a polite, old-fashioned gentleman robot guest: tall slim body of polished silver metal, "
                  "round head with a glowing warm yellow LED face with kind but slightly glazed eyes, a spinning circular arrow symbol on his chest, "
@@ -361,11 +364,6 @@ GUESTS = {
     "Ms. Context": ("a dreamy, scatterbrained humanoid robot lady guest: orange and cream metal body, "
                     "oval head with a glowing LED face with wide confused eyes, a large floppy sun hat with a small sticky note on it, "
                     "yellow travel coat, holding a travel bag, a tiny question mark floating near her head"),
-}
-NOCOL = " Important: use NO magenta, pink or purple colors anywhere on the character"
-# Guests waiting for approval: drawn only by the GUEST_PREVIEW=1 run, not used in episodes until
-# they are moved into GUESTS (and characters.json) after the owner approves them on Telegram.
-NEW_GUESTS = {
     "Sir Hallucinate": ("a confident, pompous gentleman robot guest: round bronze metal body, monocle over one glowing blue LED eye, "
                         "big curled metal moustache, dark green tailcoat with a medal he invented himself, chest puffed out, "
                         "a speech-bubble-shaped badge on his lapel." + NOCOL),
@@ -379,6 +377,9 @@ NEW_GUESTS = {
     "Miss Agentic": ("a bossy, energetic robot lady guest: sleek teal and white metal body, glowing yellow LED face with a confident smile, "
                      "headset microphone, orange blazer, holding a clipboard and pointing forward as if giving orders." + NOCOL),
 }
+# Guests waiting for approval: drawn only by the GUEST_PREVIEW=1 run, not used in episodes until
+# they are moved into GUESTS (and characters.json) after the owner approves them on Telegram.
+NEW_GUESTS = {}  # guests waiting for approval go here; approved Nov 15 2026 guests moved into GUESTS
 STATES = {
     "base": "Neutral expression, mouth closed, eyes open.",
     "talk": "Change ONLY the mouth: wide open as if speaking. Keep everything else pixel-identical.",
@@ -437,7 +438,9 @@ def angle_keys(name):
 
 
 PLACE_FOR = {"Pierce": ["lobby", "hallway"], "Vex": ["bar"], "Madame Halloran": ["reception", "elevator"],
-             "Mr. Loop": ["lobby", "reception"], "Ms. Context": ["lobby", "hallway"]}
+             "Mr. Loop": ["lobby", "reception"], "Ms. Context": ["lobby", "hallway"],
+             "Sir Hallucinate": ["lobby", "bar"], "Lady Token": ["reception", "bar"], "The Twins": ["lobby", "hallway"],
+             "Dr. Retry": ["elevator", "hallway"], "Miss Agentic": ["reception", "lobby"]}
 HEIGHT = 1000  # standard sprite height in pixels
 _images_made = 0
 new_assets = []
@@ -626,7 +629,12 @@ def key_out_green(im, mode="green"):
     for pt in seeds:
         if mask.getpixel(pt) == 255:
             ImageDraw.floodfill(mask, pt, 128)
-    bg = mask.point(lambda v: 255 if v == 128 else 0)  # 255 = background
+    if mode == "magenta":
+        # magenta never appears on a magenta-background character, so enclosed gaps
+        # (between an arm and the body) that are background-coloured are removed too
+        bg = mask.point(lambda v: 255 if v >= 128 else 0)
+    else:
+        bg = mask.point(lambda v: 255 if v == 128 else 0)  # 255 = background
     bg = bg.resize((w, h), Image.BILINEAR).point(lambda v: 255 if v >= 128 else 0)
     alpha = bg.point(lambda v: 255 - v)
     alpha = alpha.filter(ImageFilter.MinFilter(3)).filter(ImageFilter.GaussianBlur(0.8))

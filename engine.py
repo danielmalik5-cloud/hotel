@@ -120,7 +120,7 @@ MOCK_LINES = {
 
 
 def mock_line(name, i):
-    options = MOCK_LINES[name]
+    options = MOCK_LINES.get(name, ["(test line)"])
     return options[i % len(options)]
 
 
