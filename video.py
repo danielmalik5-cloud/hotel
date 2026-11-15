@@ -379,7 +379,24 @@ GUESTS = {
 }
 # Guests waiting for approval: drawn only by the GUEST_PREVIEW=1 run, not used in episodes until
 # they are moved into GUESTS (and characters.json) after the owner approves them on Telegram.
-NEW_GUESTS = {}  # guests waiting for approval go here; approved Nov 15 2026 guests moved into GUESTS
+# Guests waiting for approval: drawn only by the GUEST_PREVIEW=1 run ("Draw new guests"), not used in
+# episodes until they are moved into GUESTS (and characters.json) after the owner approves them.
+NEW_GUESTS = {
+    "Mr. Cache": ("a cheerful, outdated robot gentleman guest: chunky beige retro-computer metal body, round head with a glowing "
+                  "amber LED face, small floppy-disk badge on his chest, brown tweed jacket covered in faded old luggage stickers, "
+                  "holding an old paper map." + NOCOL),
+    "Captain Timeout": ("a proud robot sea captain guest: navy blue metal body, white captain's hat with a gold anchor, "
+                        "glowing white LED face, a big round hourglass built into his chest, dark blue coat with gold buttons, "
+                        "one hand raised mid-sentence." + NOCOL),
+    "Madame Prompt-Injection": ("a sly, glamorous robot lady guest: silver metal body, glowing green LED face with a mischievous smile, "
+                                "black sunglasses pushed up on her head, long emerald green coat, holding a small scroll of "
+                                "fake 'new instructions'." + NOCOL),
+    "Baby Bot": ("a tiny, eager young robot guest: small round bright yellow metal body, oversized head with big glowing blue "
+                 "LED eyes, a little propeller cap, orange backpack, holding a very long unrolled checklist that trails on "
+                 "the floor." + NOCOL),
+    "The Critic": ("a snooty, thin robot critic guest: tall slim dark grey metal body, glowing white LED face with one raised eyebrow, "
+                   "black turtleneck and a beige scarf, holding up a score card with the number 7." + NOCOL),
+}
 STATES = {
     "base": "Neutral expression, mouth closed, eyes open.",
     "talk": "Change ONLY the mouth: wide open as if speaking. Keep everything else pixel-identical.",
@@ -566,7 +583,11 @@ def main_guest_preview():
     cols, cw = 3, W // 3
     for k, name in enumerate(names):
         x0, y0 = (k % cols) * cw, 150 + (k // cols) * 880
-        dr.text((x0 + cw // 2, y0 + 20), f"{k + 1}. {name}", font=ImageFont.truetype(FONT_B, 32), fill=(255, 255, 255), anchor="mm")
+        for fs in (32, 28, 24, 20):
+            lf = ImageFont.truetype(FONT_B, fs)
+            if dr.textlength(f"{k + 1}. {name}", font=lf) <= cw - 16:
+                break
+        dr.text((x0 + cw // 2, y0 + 20), f"{k + 1}. {name}", font=lf, fill=(255, 255, 255), anchor="mm")
         st = load_robot(d, name)
         if st is None:
             dr.text((x0 + cw // 2, y0 + 400), "(not drawn)", font=ImageFont.truetype(FONT_B, 30), fill=(200, 120, 120), anchor="mm")

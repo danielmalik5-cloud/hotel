@@ -44,5 +44,5 @@ jobs:
         run: |
           curl -sS --fail-with-body -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendDocument" \
             -F chat_id="${CHAT_ID}" \
-            -F caption="New guests for approval: 1 Sir Hallucinate, 2 Lady Token, 3 The Twins, 4 Dr. Retry, 5 Miss Agentic" \
+            -F caption="New guests for approval (numbers on the picture)" \
             -F document=@videos/guests_preview.png > /dev/null
