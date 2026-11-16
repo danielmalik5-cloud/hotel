@@ -678,7 +678,11 @@ def key_out_green(im, mode="green"):
 def _clean_magenta(full, alpha):
     """Magenta-background characters contain no magenta, pink or purple, so any clearly magenta
     pixel left anywhere (gaps, shadows, outlines) is background. Edges get the magenta tint removed."""
-    import numpy as np
+    try:
+        import numpy as np
+    except ImportError:  # never let a missing package stop the daily video: plain keying instead
+        al = alpha.filter(ImageFilter.MinFilter(3)).filter(ImageFilter.GaussianBlur(0.8))
+        return Image.merge("RGBA", (*full.convert("RGB").split(), al))
     rgb = np.asarray(full.convert("RGB"), dtype=np.int16)
     r, g, b = rgb[..., 0], rgb[..., 1], rgb[..., 2]
     m = np.minimum(r, b) - g  # how much "magenta" a pixel has: red and blue both above green

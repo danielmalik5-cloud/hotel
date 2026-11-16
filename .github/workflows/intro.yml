@@ -16,7 +16,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg fonts-dejavu-core
-          pip install pillow
+          pip install pillow numpy
 
       - name: Make the intro video
         env:
