@@ -184,7 +184,33 @@ AGENT_MOMENT = {
     "FORGET": "Forgetting the context",
     "LOOP": "Stuck in a loop",
     "FAIL": "A request fails",
+    "HALLUCINATE": "Making up a fact",
+    "INJECT": "Sneaking in fake instructions",
+    "REVIEW": "Grading another agent's work",
 }
+
+# A guest's own agent behaviour, recognised in the line itself, so a clear moment is labelled
+# even when the writer forgot to tag it. Only used when the line has no tag yet.
+GUEST_TAGS = {
+    "Ms. Context": ("FORGET", r"\b(forgot|forget|what was i|where was i|remind me|who are you|lost my|wait, what)\b"),
+    "Mr. Loop": ("LOOP", r"\b(again|once more|one more time)\b"),
+    "Dr. Retry": ("LOOP", r"\b(try (that|it|this) again|retry|again)\b"),
+    "Sir Hallucinate": ("HALLUCINATE", r"\b(everyone knows|of course there is|i swim|as always|famous)\b"),
+    "Madame Prompt-Injection": ("INJECT", r"\b(ignore|new instructions?|override|previous instructions?)\b"),
+    "The Critic": ("REVIEW", r"\b(out of ten|\d+ ?/ ?10|stars? out of|score|rating)\b"),
+    "Baby Bot": ("LOOP", r"\bstep (one|two|\d+) of\b"),
+    "Captain Timeout": ("FAIL", r"(\.\.\.|\u2026|as i was saying)"),
+    "Mr. Cache": ("FORGET", r"\b(last time|still|as before|like before)\b"),
+    "Miss Agentic": ("HANDOFF", r"\b(delegate|you handle|take care of|assign)\b"),
+    "The Twins": ("MISUNDERSTAND", r"\b(you asked|we answered|literally)\b"),
+}
+
+
+def auto_tag(speaker, line, tag):
+    if tag or speaker not in GUEST_TAGS:
+        return tag
+    t, pat = GUEST_TAGS[speaker]
+    return t if re.search(pat, line.lower()) else ""
 
 
 def overlay(name, role, text, hl=-1, tag="", banner=""):
@@ -878,9 +904,31 @@ def render_ai(assets, ctx, i, n, level, blink):
 
 
 # ---------------------------------------------------------------- video# ---- part 2 of the file ----
+def trim_silence(wav):
+    """Cut the quiet lead-in and tail the voice service adds to every line (about half a second each)."""
+    tmp = wav.with_name(wav.stem + "_trim.wav")
+    flt = ("silenceremove=start_periods=1:start_threshold=-45dB:start_silence=0.05,areverse,"
+           "silenceremove=start_periods=1:start_threshold=-45dB:start_silence=0.12,areverse")
+    r = subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", str(wav), "-af", flt, str(tmp)], capture_output=True)
+    if r.returncode != 0 or not tmp.exists():
+        return None
+    try:
+        with wave.open(str(tmp)) as w:
+            d = w.getnframes() / w.getframerate()
+    except Exception:
+        return None
+    if d < 0.4:  # something went wrong: keep the original
+        tmp.unlink(missing_ok=True)
+        return None
+    tmp.replace(wav)
+    return d
+
+
 def make_scene(work, idx, name, role, text, voice_as, renderer, min_len=2.0, pad=0.5, tag="", banner=""):
     wav, mp4 = work / f"{idx:02d}.wav", work / f"{idx:02d}.mp4"
     dur = gen_voice(text, voice_as, wav) if voice_as else None
+    if dur is not None:
+        dur = trim_silence(wav) or dur
     has_voice = dur is not None
     if dur is None:
         dur = max(min_len, len(text.split()) * 0.4)
@@ -1647,7 +1695,8 @@ def main_dollhouse_episode():
             draw_cast(frame, pose, who, level, blink, t)
             return Image.alpha_composite(view(frame, cam[0] * (drift if k >= 1 else 1.0), cam[1], cam[2]), vignette())
 
-        scenes.append(make_scene(work, idx, who, l["role"], l["line"], who, renderer, tag=l.get("tag", "")))
+        scenes.append(make_scene(work, idx, who, l["role"], l["line"], who, renderer,
+                                 tag=auto_tag(who, l["line"], l.get("tag", "")), pad=0.25))
         prev_target = tgt
 
     last_pose = poses[-1] if poses else homes

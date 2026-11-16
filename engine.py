@@ -64,14 +64,15 @@ PLANNER_RULES = (
     "A TAG marks a beat that clearly shows a typical agent behavior, so the viewer can learn it. Allowed TAGs, exactly as written: "
     "HANDOFF (an agent hands a task to another agent), ASK (an agent asks another agent for information), "
     "MISUNDERSTAND (an agent misunderstands an instruction), FORGET (an agent forgets context), "
-    "LOOP (an agent gets stuck in a loop), FAIL (a request fails). Give a TAG to two or three beats, leave the others without one.\n"
+    "LOOP (an agent gets stuck in a loop), FAIL (a request fails), HALLUCINATE (an agent confidently makes up a fact), "
+    "INJECT (an agent tries to slip in fake new instructions), REVIEW (an agent grades another agent's work). Give a TAG to two or three beats, leave the others without one.\n"
     "There must be exactly the requested number of BEAT lines: count them, the last one must be the requested number.  Use only the characters listed in the cast, "
     "spelled exactly as listed. The two guests are the stars of the episode: each guest speaks at least twice, and their two agent "
     "behaviors clash or combine in a funny way. Hotel staff appear only where the story needs them: one or two staff members are "
     "enough, and a staff member may be left out completely. No character speaks more than twice in a row."
 )
 
-AGENT_TAGS = ("HANDOFF", "ASK", "MISUNDERSTAND", "FORGET", "LOOP", "FAIL")
+AGENT_TAGS = ("HANDOFF", "ASK", "MISUNDERSTAND", "FORGET", "LOOP", "FAIL", "HALLUCINATE", "INJECT", "REVIEW")
 
 calls_made = 0
 
