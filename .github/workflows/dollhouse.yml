@@ -40,11 +40,11 @@ jobs:
           CHAT_ID: "8873549758"
         run: |
           for p in videos/dollhouse_a.png videos/dollhouse_c.png; do
-            curl -sS --fail-with-body -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto" \
+            curl -sS --fail-with-body --retry 5 --retry-delay 5 --retry-all-errors -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto" \
               -F chat_id="${CHAT_ID}" -F caption="$p" -F photo=@"$p" > /dev/null
           done
           f=$(ls -t videos/dollhouse_*.mp4 | head -1)
-          curl -sS --fail-with-body -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendVideo" \
+          curl -sS --fail-with-body --retry 5 --retry-delay 5 --retry-all-errors -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendVideo" \
             -F chat_id="${CHAT_ID}" \
             -F supports_streaming=true \
             -F width=1080 -F height=1920 \

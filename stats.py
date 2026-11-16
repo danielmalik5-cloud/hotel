@@ -106,7 +106,14 @@ def send(text):
     if not (bot and chat):
         return
     data = urllib.parse.urlencode({"chat_id": chat, "text": text}).encode()
-    urllib.request.urlopen(f"https://api.telegram.org/bot{bot}/sendMessage", data=data, timeout=60)
+    for attempt in range(5):  # Telegram sometimes drops the connection: try again
+        try:
+            urllib.request.urlopen(f"https://api.telegram.org/bot{bot}/sendMessage", data=data, timeout=60)
+            return
+        except Exception as e:
+            print("Telegram send failed, retrying:", e)
+            __import__("time").sleep(5)
+    sys.exit("Could not send the summary to Telegram")
 
 
 def main():
