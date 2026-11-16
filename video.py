@@ -1975,8 +1975,57 @@ def qa_main():
     blk = run(["ffmpeg", "-i", str(f), "-vf", "blackdetect=d=0.6:pix_th=0.06", "-an", "-f", "null", "-"]).stderr
     for st in re.findall(r"black_start:([0-9.]+)", blk):
         problems.append(f"Black screen around {float(st):.0f}s.")
+    problems += look_at_frames(f, dur)
     out.write_text(("QA warnings for " + f.name + ":\n" + "\n".join("- " + p for p in problems) + "\n") if problems else "")
     print("QA:", "; ".join(problems) if problems else "all fine", f"({dur:.0f}s)")
+
+
+LOOK_RULES = (
+    "You check a finished vertical cartoon video before it is published. You get still frames from it, with their times. "
+    "This is NORMAL and not a problem: a flat 2D comic drawing style, a cutaway drawing of a hotel with floors, small robot "
+    "characters, a dark title bar at the top, a gold label, white captions with one gold word near the bottom, a small "
+    "'AI-generated' note at the very bottom, a dark vignette around the edges, a camera zoomed in on one floor. "
+    "Report ONLY clear visual mistakes a viewer would notice: a character cut in half or floating, a broken or garbled "
+    "drawing, a mostly empty or black frame, captions cut off at the screen edge or overlapping each other, unreadable text, "
+    "or writing inside the drawing that looks garbled. Reply with OK if there is no clear mistake. Otherwise reply with up "
+    "to three short lines, each starting with the time, for example: 12s: Pierce is cut in half at the left edge."
+)
+
+
+def look_at_frames(video, dur):
+    """Claude looks at a few frames of the finished video and reports clear visual mistakes (a few cents)."""
+    key = os.environ.get("ANTHROPIC_API_KEY", "")
+    if not key or dur < 5:
+        return []
+    times = [1.0, 3.5] + [dur * k for k in (0.25, 0.4, 0.55, 0.7, 0.85)] + [dur - 1.5]
+    content = []
+    for t in times:
+        jpg = Path("/tmp") / f"look_{t:.1f}.jpg"
+        r = subprocess.run(["ffmpeg", "-y", "-v", "error", "-ss", f"{t:.2f}", "-i", str(video), "-frames:v", "1",
+                            "-vf", "scale=540:960", "-q:v", "4", str(jpg)], capture_output=True)
+        if r.returncode == 0 and jpg.exists():
+            content.append({"type": "text", "text": f"Frame at {t:.0f}s:"})
+            content.append({"type": "image", "source": {"type": "base64", "media_type": "image/jpeg",
+                                                        "data": base64.b64encode(jpg.read_bytes()).decode()}})
+    if not content:
+        return []
+    content.append({"type": "text", "text": "Any clear visual mistakes?"})
+    body = json.dumps({"model": os.environ.get("MODEL", "claude-haiku-5-5"), "max_tokens": 300, "system": LOOK_RULES,
+                       "messages": [{"role": "user", "content": content}]}).encode()
+    req = urllib.request.Request("https://api.anthropic.com/v1/messages", data=body, method="POST", headers={
+        "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=90) as r:
+            data = json.load(r)
+        text = "".join(b.get("text", "") for b in data.get("content", []) if isinstance(b, dict)).strip()
+    except Exception as e:
+        print(f"Frame check skipped ({e}).", file=sys.stderr)
+        return []
+    print("Frame check:", text)
+    if not text or text.upper().startswith("OK"):
+        return []
+    return ["Looks wrong (checked by Claude on still frames): " + ln.strip("-• ").strip()
+            for ln in text.splitlines() if ln.strip()][:3]
 
 
 if __name__ == "__main__":
