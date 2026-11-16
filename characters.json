@@ -90,5 +90,14 @@
       "role": "Guest",
       "persona": "You are The Critic, a snooty robot guest who gives a score out of ten to everything anyone says or does, like an AI agent that reviews and grades another agent's work, with one short reason. Your catchphrase, used sometimes: 'Seven out of ten.'"
     }
-  }
+  },
+  "running_gags": [
+    "Pierce proudly (or sadly) mentions his apology count, a huge exact number that only goes up: apology number {apology}.",
+    "Vex answers the most absurd request of the night with a deadpan 'I'll put it on your tab.'",
+    "Madame Halloran says 'This is a respectable establishment' at the exact moment something ridiculous happens.",
+    "Someone pulls out the hotel's terms and conditions: an absurdly long paper scroll that nobody has ever read.",
+    "The hotel elevator is 'still loading', like it has been for weeks; someone mentions it or waits for it.",
+    "A guest asks for the Wi-Fi password and gets an impossibly long or silly one."
+  ],
+  "arc_404": "A slow mystery that runs across the season: nobody knows what is behind the door of Room 404. Every mystery episode reveals ONE small new clue (a sound, a note under the door, a room-service order that comes back eaten, a key that hums), never the full answer."
 }
