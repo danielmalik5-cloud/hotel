@@ -73,6 +73,8 @@ ACTING = {
     "Baby Bot": "a tiny, curious baby robot, high, playful and innocent",
     "The Critic": "a snooty critic, slow, nasal and judgmental, savoring every insult",
 }
+PACE = ", speaking at a brisk, quick pace with no long pauses, like fast comic dialogue"
+VOICE_SPEED = float(os.environ.get("VOICE_SPEED", "1.08"))  # the new voices act slowly: play them a little faster
 SOUND_TAG_RE = re.compile(r"\s*<[^<>]{1,20}>\s*")
 
 
@@ -330,7 +332,8 @@ def gen_voice(text, speaker, out_wav):
     cache = None
     plain = shown_text(text)
     prompt = (NARRATOR_STYLE if speaker == "Narrator" else "") + plain
-    style = ACTING.get(speaker, "natural, lively and a little comic, like a character in an animated comedy")
+    style = ACTING.get(speaker, "natural, lively and a little comic, like a character in an animated comedy") + \
+        ("" if speaker == "Narrator" else PACE)
     if True:
         # every voice line is cached, so a re-run only asks for the lines that are missing
         cdir = ROOT / "assets" / "voices"
@@ -984,11 +987,24 @@ def trim_silence(wav):
     return d
 
 
+def speed_up(wav, factor):
+    """Play a voice line a little faster without changing its pitch."""
+    tmp = wav.with_name(wav.stem + "_fast.wav")
+    r = subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", str(wav), "-af", f"atempo={factor}", str(tmp)], capture_output=True)
+    if r.returncode != 0 or not tmp.exists():
+        return None
+    tmp.replace(wav)
+    with wave.open(str(wav)) as w:
+        return w.getnframes() / w.getframerate()
+
+
 def make_scene(work, idx, name, role, text, voice_as, renderer, min_len=2.0, pad=0.5, tag="", banner=""):
     wav, mp4 = work / f"{idx:02d}.wav", work / f"{idx:02d}.mp4"
     dur = gen_voice(text, voice_as, wav) if voice_as else None
     if dur is not None:
         dur = trim_silence(wav) or dur
+        if voice_as != "Narrator" and TTS_MODEL.startswith("gemini-3") and VOICE_SPEED != 1.0:
+            dur = speed_up(wav, VOICE_SPEED) or dur
     has_voice = dur is not None
     text = shown_text(text)  # the captions never show sound tags such as <laugh>
     if dur is None:
