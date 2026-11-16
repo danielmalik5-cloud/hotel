@@ -1629,7 +1629,7 @@ def episode_scene(ep, cast):
               f"showing tonight's story: {ep.get('situation', '')} It is the moment when someone says: \"{first}\". "
               f"The characters in the picture, in this order of the reference images, drawn exactly like them (same shapes, "
               f"colors and clothes): {', '.join(names)}. Big, clear, expressive poses, a warm cozy hotel background, "
-              "the action in the middle of the picture. No text, no letters, no words, no signs, no speech bubbles, no captions.")
+              "the action in the middle of the picture. Absolutely no writing anywhere in the picture: no text, letters, words, labels, signs, notes, tags or speech bubbles.")
     ok = gen_image(prompt, out, reference=refs or None, prefer="gemini-nano-banana-2.1")
     return out if ok else None
 
