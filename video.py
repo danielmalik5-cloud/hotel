@@ -44,6 +44,8 @@ KEY = os.environ.get("GOOGLE_API_KEY", "")
 DAY = os.environ.get("DAY") or date.today().isoformat()
 TTS_MODEL = os.environ.get("TTS_MODEL", "gemini-2.5-flash-preview-tts")
 IMAGE_MODEL = os.environ.get("IMAGE_MODEL", "gemini-2.5-flash-image")
+_image_models = [IMAGE_MODEL] + [m for m in ("gemini-nano-banana-2.1", "gemini-3.1-flash-image") if m != IMAGE_MODEL]
+TTS_FALLBACKS = ["gemini-3.8-flash-tts", "gemini-3.8-flash-lite-tts"]  # used if the main voice model stops answering
 MAX_IMAGES = int(os.environ.get("MAX_IMAGES", "20"))
 API = "https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent"
 
@@ -309,19 +311,37 @@ def gen_voice(text, speaker, out_wav):
             shutil.copy(cache, out_wav)
             with wave.open(str(out_wav)) as w:
                 return w.getnframes() / w.getframerate()
-    payload = {
+    old_payload = {
         "contents": [{"parts": [{"text": prompt}]}],
         "generationConfig": {
             "responseModalities": ["AUDIO"],
             "speechConfig": {"voiceConfig": {"prebuiltVoiceConfig": {"voiceName": VOICES[speaker]}}},
         },
     }
+    new_payload = {  # Gemini 3.8 TTS: the style goes in speech_metadata, the voice by name
+        "contents": [{"role": "user", "parts": [{"text": text, "speech_metadata": {
+            "style": NARRATOR_STYLE.split(":")[0].replace("Read this aloud as ", "") if speaker == "Narrator"
+            else "natural, lively and a little comic, like a character in an animated comedy"}}]}],
+        "generationConfig": {"responseModalities": ["AUDIO"],
+                             "speechConfig": {"voiceConfig": {"voice": VOICES[speaker]}}},
+    }
+    # the old preview voice model is being retired: if it stops answering, use the current one
+    models = [TTS_MODEL] + [m for m in TTS_FALLBACKS if m != TTS_MODEL]
+    mi = 0
     min_secs = 0.17 * len(text.split())  # a much shorter clip means the voice was cut off
-    for attempt in range(8):
+    for attempt in range(10):
+        model = models[mi]
         try:
-            data = post(TTS_MODEL, payload)
+            data = post(model, new_payload if model.startswith("gemini-3") else old_payload)
             part = data["candidates"][0]["content"]["parts"][0]
             pcm = base64.b64decode((part.get("inlineData") or part["inline_data"])["data"])
+            if pcm[:4] == b"RIFF":  # newer models send a complete WAV file
+                import io
+                with wave.open(io.BytesIO(pcm)) as wr:
+                    rate = wr.getframerate()
+                    pcm = wr.readframes(wr.getnframes())
+                if rate != 24000:
+                    print(f"Unexpected voice sample rate {rate}", file=sys.stderr)
             secs = len(pcm) / 2 / 24000
             if secs < min_secs:
                 print(f"Voice too short ({secs:.1f}s) for {speaker}, retrying.", file=sys.stderr)
@@ -337,8 +357,12 @@ def gen_voice(text, speaker, out_wav):
             time.sleep(8)  # stay under the per-minute limit of the voice service
             return secs
         except Exception as e:
-            print(f"Voice failed ({e}) for {speaker}, attempt {attempt + 1}.", file=sys.stderr)
+            print(f"Voice failed ({e}) for {speaker} with {model}, attempt {attempt + 1}.", file=sys.stderr)
             if any(c in str(e) for c in ("HTTP Error 400", "HTTP Error 403", "HTTP Error 404")):
+                if mi + 1 < len(models):
+                    mi += 1
+                    print(f"Switching voice model to {models[mi]}.", file=sys.stderr)
+                    continue
                 break
             time.sleep(30 if "429" in str(e) else 8)
     print(f"VOICE MISSING for {speaker}: {text}", file=sys.stderr)
@@ -526,7 +550,7 @@ def gen_image(prompt, out_path, reference=None, aspect="9:16"):
         for attempt in range(3):
             try:
                 _images_made += 1
-                data = post(IMAGE_MODEL, payload)
+                data = post(_image_models[0], payload)
                 for part in data["candidates"][0]["content"]["parts"]:
                     inline = part.get("inlineData") or part.get("inline_data")
                     if inline:
@@ -538,6 +562,9 @@ def gen_image(prompt, out_path, reference=None, aspect="9:16"):
             except urllib.error.HTTPError as e:
                 if e.code == 429 and attempt < 2:
                     time.sleep(15)
+                    continue
+                if e.code == 404 and len(_image_models) > 1:  # the image model was retired: use the next one
+                    print(f"Image model {_image_models.pop(0)} not available, using {_image_models[0]}.", file=sys.stderr)
                     continue
                 if e.code == 400 and use_ratio:
                     break  # try again without the aspect ratio setting
