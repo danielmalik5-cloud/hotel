@@ -21,6 +21,7 @@ Env: GOOGLE_API_KEY, MOCK=1 (no network), DAY=YYYY-MM-DD, TTS_MODEL,
 import array
 import base64
 import json
+import re
 import math
 import os
 import shutil
@@ -1584,7 +1585,7 @@ def main_dollhouse_episode():
                 place(state, guest, "hall")
         else:
             for fl, words in MOVES:
-                if fl in floors and any(w in txt for w in words):
+                if fl in floors and any(re.search(r"\b" + re.escape(w.strip()) + r"\b", txt) for w in words):
                     if not (who == "Vex" and fl == "bar") and state.get(who, ("", 0))[0] != fl:
                         place(state, who, fl)
                     break
