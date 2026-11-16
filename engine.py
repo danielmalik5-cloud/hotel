@@ -16,6 +16,7 @@ Environment variables:
 import json
 import os
 import random
+import re
 import sys
 import urllib.error
 import urllib.request
@@ -34,6 +35,8 @@ RULES = (
     "Reply with ONLY your next spoken line: one sentence, at most 12 words. Use plain, everyday English, simple words. "
     "Be funny and concrete: say something specific, not just polite small talk. "
     "No stage directions, no quotation marks, no name prefix. Stay in character. "
+    "You may add at most ONE sound tag where your character really would make that sound, chosen only from: "
+    "<laugh>, <sigh>, <giggle>, <gasp>, <cough>, <short pause>, <long pause>. Most lines need no tag. "
     "Remember the viewer only hears the dialogue and has never seen the hotel: be clear about what is happening, and if you mention "
     "a thing or a problem for the first time, say in plain words what it is. Never refer to something nobody has mentioned yet. "
     "Pursue your own goal in this scene, react to what was just said, and move the story forward. "
@@ -50,7 +53,9 @@ PLANNER_RULES = (
     "and problem in plain words before it is used again, keep to ONE clear problem, and make the last beat a clear funny "
     "payoff that delivers what the problem was about, in a literal or absurd way (for example the guest finally gets exactly what "
     "they asked for, but in a silly form). The tone is light and comedic. Structure: a strong hook, a problem, a complication, "
-    "a twist, and a punchline as the last beat. BEAT 1 is the hook and the very first thing the viewer hears, with no "
+    "a twist, and a punchline as the last beat. BEAT 4 is a second hook: a surprise or a new question that makes the viewer "
+    "stay for the rest. The LAST beat must echo BEAT 1 (repeat or answer its words in a twist), so the end flows straight back "
+    "into the start when the video loops. BEAT 1 is the hook and the very first thing the viewer hears, with no "
     "narrator or introduction before it: a character says the strangest, funniest or most mysterious thing of the episode, "
     "as a short question or claim that makes a viewer who is scrolling past stop, and that also makes tonight's problem clear. Keep it family friendly with no real people, brands or politics.\n"
     "Reply with ONLY plain text lines in exactly this format, nothing else, no markdown:\n"
@@ -71,6 +76,23 @@ PLANNER_RULES = (
     "behaviors clash or combine in a funny way. Hotel staff appear only where the story needs them: one or two staff members are "
     "enough, and a staff member may be left out completely. No character speaks more than twice in a row."
 )
+
+SOUND_TAGS = ("<laugh>", "<sigh>", "<giggle>", "<gasp>", "<cough>", "<short pause>", "<long pause>")
+
+
+def clean_sound_tags(line):
+    """Keep at most one allowed sound tag such as <laugh>; drop anything else in angle brackets."""
+    kept = []
+
+    def keep(m):
+        t = m.group(0).lower()
+        if t in SOUND_TAGS and not kept:
+            kept.append(t)
+            return t
+        return ""
+    line = re.sub(r"<[^<>]{1,20}>", keep, line)
+    return re.sub(r"\s{2,}", " ", line).strip()
+
 
 AGENT_TAGS = ("HANDOFF", "ASK", "MISUNDERSTAND", "FORGET", "LOOP", "FAIL", "HALLUCINATE", "INJECT", "REVIEW")
 
@@ -263,7 +285,11 @@ def build_scene(chars, plan, situation_text):
                 f"What this moment should do: {beat['intent']}\n"
                 + ("This is the FIRST line of the episode and nothing comes before it: open with the hook, the strangest or "
                    "funniest thing in tonight's story, in at most 10 words, and make tonight's problem clear.\n" if first else "")
-                + ("This is the LAST line of the episode: a clear, funny punchline that pays off the problem of tonight's story.\n" if last else "")
+                + ("This is the LAST line of the episode: a clear, funny punchline that pays off the problem of tonight's story, "
+                   f"and that echoes the very first line ({transcript[0]['line'] if transcript else ''}) with a twist, "
+                   "reusing some of its words, so the video can loop back to the start.\n" if last else "")
+                + ("This line is the second hook, around the middle of the episode: a surprise or a new question that "
+                   "makes the viewer want to see the end.\n" if i == 3 else "")
                 + f"Now write {name}'s next line."
             )
             line = call_claude(system, user_text)
@@ -272,6 +298,7 @@ def build_scene(chars, plan, situation_text):
                 line = call_claude(system, user_text + f"\nYour draft was too long: {line}\n"
                                    "Rewrite it in at most 12 words, keeping the joke. Reply with only the line.")
                 line = strip_name(line, chars["all"])
+            line = clean_sound_tags(line)
         transcript.append({"speaker": name, "role": chars["all"][name]["role"], "line": line, "tag": beat.get("tag", "")})
     return transcript
 

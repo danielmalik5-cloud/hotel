@@ -42,10 +42,10 @@ FPS = 15
 MOCK = os.environ.get("MOCK") == "1"
 KEY = os.environ.get("GOOGLE_API_KEY", "")
 DAY = os.environ.get("DAY") or date.today().isoformat()
-TTS_MODEL = os.environ.get("TTS_MODEL", "gemini-2.5-flash-preview-tts")
+TTS_MODEL = os.environ.get("TTS_MODEL", "gemini-3.8-flash-tts")
 IMAGE_MODEL = os.environ.get("IMAGE_MODEL", "gemini-2.5-flash-image")
 _image_models = [IMAGE_MODEL] + [m for m in ("gemini-nano-banana-2.1", "gemini-3.1-flash-image") if m != IMAGE_MODEL]
-TTS_FALLBACKS = ["gemini-3.8-flash-tts", "gemini-3.8-flash-lite-tts"]  # used if the main voice model stops answering
+TTS_FALLBACKS = ["gemini-3.8-flash-lite-tts", "gemini-2.5-flash-preview-tts"]  # used if the main voice model stops answering
 MAX_IMAGES = int(os.environ.get("MAX_IMAGES", "20"))
 API = "https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent"
 
@@ -54,6 +54,33 @@ VOICES = {"Pierce": "Puck", "Vex": "Charon", "Madame Halloran": "Kore", "Narrato
           "Sir Hallucinate": "Algieba", "Lady Token": "Gacrux", "The Twins": "Achird", "Dr. Retry": "Sadachbia",
           "Miss Agentic": "Zephyr", "Mr. Cache": "Iapetus", "Captain Timeout": "Alnilam",
           "Madame Prompt-Injection": "Despina", "Baby Bot": "Leda", "The Critic": "Rasalgethi"}
+# how each character performs its lines (the new voice model acts from these descriptions)
+ACTING = {
+    "Pierce": "an anxious, eager robot hotel porter who apologizes for everything, quick nervous delivery, slightly shaky",
+    "Vex": "a dry, deadpan robot bartender, slow and unimpressed, low and calm, with a hint of sarcasm",
+    "Madame Halloran": "a grand, strict robot hotel manager, crisp and theatrical, proud and a little dramatic",
+    "Narrator": "a calm, warm, steady storyteller, at an even pace",
+    "Mr. Loop": "a cheerful guest stuck in a loop, upbeat and bouncy, a bit robotic in his repetition",
+    "Ms. Context": "a friendly but forgetful guest, warm and confused, trailing off as she loses her train of thought",
+    "Sir Hallucinate": "a pompous gentleman, very confident and grand, as if every invented fact were certain",
+    "Lady Token": "a fussy, thrifty lady counting every word, clipped and precise, slightly stingy",
+    "The Twins": "two identical voices in one, playful and in perfect sync, a little eerie",
+    "Dr. Retry": "a stubborn, determined doctor, patient at first and then more and more exasperated",
+    "Miss Agentic": "an energetic go-getter, fast, bright and bossy, always on to the next task",
+    "Mr. Cache": "a smug guest who remembers everything, slow, knowing and self-satisfied",
+    "Captain Timeout": "a booming sea captain who keeps running out of time, loud then suddenly cut short",
+    "Madame Prompt-Injection": "a sly, silky schemer, sweet and persuasive with a sneaky edge",
+    "Baby Bot": "a tiny, curious baby robot, high, playful and innocent",
+    "The Critic": "a snooty critic, slow, nasal and judgmental, savoring every insult",
+}
+SOUND_TAG_RE = re.compile(r"\s*<[^<>]{1,20}>\s*")
+
+
+def shown_text(text):
+    """The words to show in the captions: the line without sound tags such as <laugh>."""
+    return SOUND_TAG_RE.sub(" ", text).strip()
+
+
 FONT_B = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 FONT_S = "/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf"
 ST = 'stroke="#000" stroke-width="8" stroke-linejoin="round" stroke-linecap="round"'
@@ -301,12 +328,16 @@ def gen_voice(text, speaker, out_wav):
         return None
     import hashlib
     cache = None
-    prompt = (NARRATOR_STYLE if speaker == "Narrator" else "") + text
+    plain = shown_text(text)
+    prompt = (NARRATOR_STYLE if speaker == "Narrator" else "") + plain
+    style = ACTING.get(speaker, "natural, lively and a little comic, like a character in an animated comedy")
     if True:
         # every voice line is cached, so a re-run only asks for the lines that are missing
         cdir = ROOT / "assets" / "voices"
         cdir.mkdir(parents=True, exist_ok=True)
-        cache = cdir / (hashlib.md5((TTS_MODEL + VOICES[speaker] + prompt).encode()).hexdigest()[:16] + ".wav")
+        key = (TTS_MODEL + VOICES[speaker] + prompt) if not TTS_MODEL.startswith("gemini-3") else \
+            (TTS_MODEL + VOICES[speaker] + style + text)
+        cache = cdir / (hashlib.md5(key.encode()).hexdigest()[:16] + ".wav")
         if cache.exists():
             shutil.copy(cache, out_wav)
             with wave.open(str(out_wav)) as w:
@@ -319,16 +350,14 @@ def gen_voice(text, speaker, out_wav):
         },
     }
     new_payload = {  # Gemini 3.8 TTS: the style goes in speech_metadata, the voice by name
-        "contents": [{"role": "user", "parts": [{"text": text, "speech_metadata": {
-            "style": NARRATOR_STYLE.split(":")[0].replace("Read this aloud as ", "") if speaker == "Narrator"
-            else "natural, lively and a little comic, like a character in an animated comedy"}}]}],
+        "contents": [{"role": "user", "parts": [{"text": text, "speech_metadata": {"style": style}}]}],
         "generationConfig": {"responseModalities": ["AUDIO"],
                              "speechConfig": {"voiceConfig": {"voice": VOICES[speaker]}}},
     }
     # the old preview voice model is being retired: if it stops answering, use the current one
     models = [TTS_MODEL] + [m for m in TTS_FALLBACKS if m != TTS_MODEL]
     mi = 0
-    min_secs = 0.17 * len(text.split())  # a much shorter clip means the voice was cut off
+    min_secs = 0.17 * len(plain.split())  # a much shorter clip means the voice was cut off
     for attempt in range(10):
         model = models[mi]
         try:
@@ -532,17 +561,21 @@ def assets_dir():
     return d
 
 
-def gen_image(prompt, out_path, reference=None, aspect="9:16"):
-    """Ask the image model for a picture. True if saved."""
+def gen_image(prompt, out_path, reference=None, aspect="9:16", prefer=None):
+    """Ask the image model for a picture. True if saved. reference: one picture path or a list of them."""
     global _images_made
     if out_path.exists():
         return True
     if MOCK or not KEY or _images_made >= MAX_IMAGES:
         return False
     parts = [{"text": prompt}]
-    if reference is not None:
+    refs = [] if reference is None else (list(reference) if isinstance(reference, (list, tuple)) else [reference])
+    for ref in refs:
         parts.append({"inline_data": {"mime_type": "image/png",
-                                      "data": base64.b64encode(Path(reference).read_bytes()).decode()}})
+                                      "data": base64.b64encode(Path(ref).read_bytes()).decode()}})
+    if prefer and prefer in _image_models:  # try this model first (for example the cheaper, newer one)
+        _image_models.remove(prefer)
+        _image_models.insert(0, prefer)
     for use_ratio in (True, False):
         payload = {"contents": [{"parts": parts}]}
         if use_ratio:
@@ -957,6 +990,7 @@ def make_scene(work, idx, name, role, text, voice_as, renderer, min_len=2.0, pad
     if dur is not None:
         dur = trim_silence(wav) or dur
     has_voice = dur is not None
+    text = shown_text(text)  # the captions never show sound tags such as <laugh>
     if dur is None:
         dur = max(min_len, len(text.split()) * 0.4)
     total = dur + pad
@@ -1561,6 +1595,100 @@ def crop_view(frame, z, cxs, cys):
     return frame.resize((W, H), Image.BICUBIC, box=(cx - w0 / 2, cy - h1 / 2, cx + w0 / 2, cy + h1 / 2))
 
 
+def episode_scene(ep, cast):
+    """One new comic drawing of tonight's story, used behind the title at the start (and the end, for the loop)."""
+    out = ROOT / "assets" / "scenes" / f"{DAY}.png"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    if out.exists():
+        return out
+    refs, names = [], []
+    for who in cast:
+        p = ROOT / "assets" / "robots" / f"{slug_of(who)}_base.png"
+        if p.exists() and len(refs) < 6:
+            refs.append(p)
+            names.append(who)
+    lines = ep.get("lines", [])
+    first = shown_text(lines[0]["line"]) if lines else ""
+    prompt = (f"{STYLE}. Vertical 9:16 composition. One funny, eye-catching comic moment inside a vintage hotel run by robots, "
+              f"showing tonight's story: {ep.get('situation', '')} It is the moment when someone says: \"{first}\". "
+              f"The characters in the picture, in this order of the reference images, drawn exactly like them (same shapes, "
+              f"colors and clothes): {', '.join(names)}. Big, clear, expressive poses, a warm cozy hotel background, "
+              "the action in the middle of the picture. No text, no letters, no words, no signs, no speech bubbles, no captions.")
+    ok = gen_image(prompt, out, reference=refs or None, prefer="gemini-nano-banana-2.1")
+    return out if ok else None
+
+
+THEME_PROMPT = ("Instrumental only: no vocals, no singing, no lyrics. A playful, light retro hotel-lobby jingle for a funny "
+                "cartoon series about robots running a hotel: bouncy pizzicato strings, a little jazzy piano, soft brushed "
+                "drums and a tiny bell, whimsical and curious, steady medium tempo, easy to loop.")
+
+
+def theme_music():
+    """The hotel's theme tune: made once with the music model, then reused in every episode."""
+    out = ROOT / "assets" / "music" / "theme.mp3"
+    if out.exists():
+        return out
+    if MOCK or not KEY:
+        return None
+    out.parent.mkdir(parents=True, exist_ok=True)
+    payloads = [{"contents": [{"parts": [{"text": THEME_PROMPT}]}],
+                 "generationConfig": {"responseModalities": ["AUDIO", "TEXT"]}},
+                {"contents": [{"parts": [{"text": THEME_PROMPT}]}]}]
+    for payload in payloads:
+        try:
+            req = urllib.request.Request(API.format("lyria-3-clip-preview"), data=json.dumps(payload).encode(),
+                                         headers={"x-goog-api-key": KEY, "content-type": "application/json"})
+            with urllib.request.urlopen(req, timeout=300) as r:
+                data = json.load(r)
+            for part in data["candidates"][0]["content"]["parts"]:
+                inline = part.get("inlineData") or part.get("inline_data")
+                if inline:
+                    out.write_bytes(base64.b64decode(inline["data"]))
+                    new_assets.append(out)
+                    print("Theme music made.")
+                    return out
+            print("No music returned.", file=sys.stderr)
+        except Exception as e:
+            print(f"Theme music failed ({e}).", file=sys.stderr)
+    return None
+
+
+def scene_seconds(mp4):
+    r = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(mp4)],
+                       capture_output=True, text=True)
+    try:
+        return float(r.stdout.strip())
+    except ValueError:
+        return 0.0
+
+
+def join_scenes(scenes, out, music=None):
+    """Glue the scenes together; with music, a soft theme plays under everything, louder at the start and end."""
+    lst = out.with_name("list_" + out.stem + ".txt")
+    lst.write_text("".join(f"file '{p.resolve()}'\n" for p in scenes))
+    cmd = ["ffmpeg", "-y", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", str(lst)]
+    if music and Path(music).exists():
+        total = sum(scene_seconds(p) for p in scenes)
+        o, e = scene_seconds(scenes[0]), scene_seconds(scenes[-1])
+        vol = f"if(lt(t,{o:.2f}),0.32,if(gt(t,{total - e:.2f}),0.32,0.07))"
+        flt = ("[0:a]aresample=44100:async=1,aformat=channel_layouts=stereo[v];"
+               f"[1:a]aresample=44100,aformat=channel_layouts=stereo,volume='{vol}':eval=frame,"
+               f"afade=t=in:d=0.3,afade=t=out:st={max(0.0, total - 1.5):.2f}:d=1.5[m];"
+               "[v][m]amix=inputs=2:duration=first:normalize=0[a]")
+        cmd += ["-stream_loop", "-1", "-i", str(music), "-filter_complex", flt, "-map", "0:v", "-map", "[a]"]
+    else:
+        cmd += ["-af", "aresample=async=1"]
+    cmd += ["-c:v", "copy", "-c:a", "aac", "-b:a", "160k", "-ar", "44100", "-ac", "2", str(out)]
+    r = subprocess.run(cmd, capture_output=True, text=True)
+    if r.returncode != 0 and music:
+        print(f"Mixing the music failed ({r.stderr.strip()[-300:]}): making the video without it.", file=sys.stderr)
+        return join_scenes(scenes, out, None)
+    if r.returncode != 0:
+        raise RuntimeError(r.stderr)
+    lst.unlink(missing_ok=True)
+    return out
+
+
 def main_dollhouse_episode():
     """The day's episode filmed in the dollhouse: one hotel drawing, the camera glides between floors."""
     global MAX_IMAGES, FPS
@@ -1689,11 +1817,19 @@ def main_dollhouse_episode():
             frame.alpha_composite(canvas, (int(cx - canvas.width / 2), int(fy - canvas.height + bob)))
 
     scenes = []
-    # opening: from above, slowly in toward the terrace, then the camera drops into the hotel
+    # opening: tonight's own comic drawing behind the title (or the hotel from above), then the camera drops into the hotel
     first_pose = poses[0] if poses else homes
+    cast = list(dict.fromkeys([l["speaker"] for l in lines] + guest_list))
+    scene_png = episode_scene(ep, cast)
+    pic = cover_crop(scene_png).convert("RGBA") if scene_png else None
+    if pic is not None:  # also kept next to the video, so it can be checked
+        (ROOT / "videos").mkdir(exist_ok=True)
+        shutil.copy(scene_png, ROOT / "videos" / f"scene_{DAY}.png")
 
     def open_render(i, n, level, blink):
         k = ease(i / max(1, n - 1))
+        if pic is not None:  # slow push in on tonight's drawing
+            return Image.alpha_composite(crop_view(pic, 1.0 + 0.10 * k, 0.5, 0.5), vignette())
         if top is not None:
             return Image.alpha_composite(crop_view(top, 1.0 + 0.55 * k, 0.5 - 0.22 * k, 0.5 + 0.0 * k), vignette())
         frame = bg.copy()
@@ -1733,7 +1869,12 @@ def main_dollhouse_episode():
         z0, x0, y0 = prev_target
         frame = bg.copy()
         draw_cast(frame, last_pose, None, 0, blink, i / FPS)
-        return Image.alpha_composite(view(frame, z0 + (1.0 - z0) * k, x0 + (0.5 - x0) * k, y0 + ((TP + H / 2) - y0) * k), vignette())
+        im = Image.alpha_composite(view(frame, z0 + (1.0 - z0) * k, x0 + (0.5 - x0) * k, y0 + ((TP + H / 2) - y0) * k), vignette())
+        if pic is not None:  # fade into the opening drawing, so the loop back to the start feels seamless
+            a = min(1.0, max(0.0, (i / max(1, n - 1) - 0.55) / 0.4))
+            if a > 0:
+                im = Image.blend(im, Image.alpha_composite(crop_view(pic, 1.0, 0.5, 0.5), vignette()), a)
+        return im
 
     scenes.append(make_scene(work, len(lines) + 1, "Narrator", "",
                              "Every episode is improvised by AI agents. New stories every morning.", "Narrator",
@@ -1743,12 +1884,9 @@ def main_dollhouse_episode():
         src = d / "places" / f"{name}.png"
         if src.exists():
             shutil.copy(src, ROOT / "videos" / f"{name}.png")
-    lst = work / "list.txt"
-    lst.write_text("".join(f"file '{p.resolve()}'\n" for p in scenes))
     out = ROOT / "videos" / f"dollhouse_ep_{DAY}.mp4"
     tmp = ROOT / "videos" / f"tmp_dollhouse_ep_{DAY}.mp4"
-    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", str(lst),
-                    "-c:v", "copy", "-c:a", "aac", "-b:a", "160k", "-ar", "44100", "-ac", "2", "-af", "aresample=async=1", str(tmp)], check=True)
+    join_scenes(scenes, tmp, theme_music())
     tmp.rename(out)
     shutil.copy(out, ROOT / "videos" / f"{DAY}.mp4")  # the name the daily workflow sends to Telegram
     print(f"Dollhouse episode saved: {out}. New drawings this run: {len(new_assets)}.")

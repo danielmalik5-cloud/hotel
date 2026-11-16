@@ -7,6 +7,9 @@ on:
         description: "Episode date to re-render (YYYY-MM-DD)"
         default: "2026-11-14"
 
+permissions:
+  contents: write
+
 jobs:
   episode:
     runs-on: ubuntu-latest
@@ -25,6 +28,16 @@ jobs:
           DAY: ${{ github.event.inputs.day }}
           DOLLHOUSE_EP: "1"
         run: python3 video.py
+
+      - name: Save new voices and drawings (so they are not paid for again)
+        if: always()
+        run: |
+          git config user.name "token-hotel-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add assets
+          git commit -m "Voices and drawings from a re-render" || echo "Nothing new to save"
+          git pull --rebase || true
+          git push || true
 
       - name: Check the video quality
         continue-on-error: true
