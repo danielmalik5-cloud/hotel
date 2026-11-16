@@ -1253,7 +1253,7 @@ def main():
                                  make_renderer(place, who, prev, i), tag=l.get("tag", "")))
         prev = who
     scenes.append(make_scene(work, len(ep["lines"]) + 1, "Narrator", "",
-                             "Every episode is improvised by AI agents. New stories every morning.", "Narrator",
+                             "Every episode is improvised by AI agents. Comment a guest for tomorrow!", "Narrator",
                              make_renderer("hallway", None, None, 1), min_len=3))
 
     lst = work / "list.txt"
@@ -1916,7 +1916,7 @@ def main_dollhouse_episode():
         return im
 
     scenes.append(make_scene(work, len(lines) + 1, "Narrator", "",
-                             "Every episode is improvised by AI agents. New stories every morning.", "Narrator",
+                             "Every episode is improvised by AI agents. Comment a guest for tomorrow!", "Narrator",
                              end_render, min_len=3))
     (ROOT / "videos").mkdir(exist_ok=True)
     for name in ("dollhouse_a", "dollhouse_c"):
