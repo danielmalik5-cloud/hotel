@@ -1,0 +1,71 @@
+name: Moving opening test
+
+on:
+  workflow_dispatch:
+    inputs:
+      day:
+        description: "Episode date to animate (YYYY-MM-DD)"
+        default: "2026-11-16"
+
+permissions:
+  contents: write
+
+jobs:
+  animate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install video tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg fonts-dejavu-core
+          pip install pillow numpy
+
+      - name: Turn the episode drawing into a moving clip (one paid request)
+        env:
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          DAY: ${{ github.event.inputs.day }}
+        run: python3 animate.py
+
+      - name: Make the episode again with the moving opening
+        env:
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          DAY: ${{ github.event.inputs.day }}
+          DOLLHOUSE_EP: "1"
+        run: python3 video.py
+
+      - name: Save the clip, voices and drawings
+        if: always()
+        run: |
+          git config user.name "token-hotel-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add assets
+          git commit -m "Moving opening test" || echo "Nothing new to save"
+          git pull --rebase || true
+          git push || true
+
+      - name: Keep the video for download
+        uses: actions/upload-artifact@v4
+        with:
+          name: moving-opening-video
+          path: |
+            videos/*.mp4
+            assets/scenes/*.mp4
+          retention-days: 14
+
+      - name: Send the video to Telegram
+        env:
+          BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          CHAT_ID: "8873549758"
+          DAY: ${{ github.event.inputs.day }}
+        run: |
+          f=videos/${DAY}.mp4
+          curl -sS --fail-with-body --retry 5 --retry-delay 5 --retry-all-errors -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendVideo" \
+            -F chat_id="${CHAT_ID}" \
+            -F supports_streaming=true \
+            -F width=1080 -F height=1920 \
+            -F duration="$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$f" | cut -d. -f1)" \
+            -F caption="Stage 2 test ${DAY}: moving opening" \
+            -F video=@"$f" > /dev/null

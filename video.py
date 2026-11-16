@@ -998,7 +998,7 @@ def speed_up(wav, factor):
         return w.getnframes() / w.getframerate()
 
 
-def make_scene(work, idx, name, role, text, voice_as, renderer, min_len=2.0, pad=0.5, tag="", banner=""):
+def make_scene(work, idx, name, role, text, voice_as, renderer, min_len=2.0, pad=0.5, tag="", banner="", min_total=0.0):
     wav, mp4 = work / f"{idx:02d}.wav", work / f"{idx:02d}.mp4"
     dur = gen_voice(text, voice_as, wav) if voice_as else None
     if dur is not None:
@@ -1009,7 +1009,7 @@ def make_scene(work, idx, name, role, text, voice_as, renderer, min_len=2.0, pad
     text = shown_text(text)  # the captions never show sound tags such as <laugh>
     if dur is None:
         dur = max(min_len, len(text.split()) * 0.4)
-    total = dur + pad
+    total = max(dur + pad, min_total)
     n = max(1, round(total * FPS))
     talking = name not in ("Narrator",)
     levels = mouth_levels(wav if has_voice else None, n, text) if talking else [0] * n
@@ -1842,8 +1842,22 @@ def main_dollhouse_episode():
         (ROOT / "videos").mkdir(exist_ok=True)
         shutil.copy(scene_png, ROOT / "videos" / f"scene_{DAY}.png")
 
+    anim = []  # stage 2 test: tonight's drawing as a moving cartoon clip, if one was made
+    clip = ROOT / "assets" / "scenes" / f"{DAY}.mp4"
+    if clip.exists():
+        adir = work / "anim"
+        shutil.rmtree(adir, ignore_errors=True)
+        adir.mkdir()
+        subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", str(clip), "-t", "5", "-vf",
+                        f"fps={FPS},scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H}",
+                        "-q:v", "3", str(adir / "%04d.jpg")])
+        anim = sorted(adir.glob("*.jpg"))
+        print(f"Moving opening clip: {len(anim)} frames.")
+
     def open_render(i, n, level, blink):
         k = ease(i / max(1, n - 1))
+        if anim:
+            return Image.alpha_composite(Image.open(anim[min(i, len(anim) - 1)]).convert("RGBA"), vignette())
         if pic is not None:  # slow push in on tonight's drawing
             return Image.alpha_composite(crop_view(pic, 1.0 + 0.10 * k, 0.5, 0.5), vignette())
         if top is not None:
@@ -1854,7 +1868,7 @@ def main_dollhouse_episode():
 
     # short opening: one narrator sentence of context with the title card over the view from above, then the hook
     scenes.append(make_scene(work, 0, "Narrator", "", OPENING_LINE, "Narrator", open_render, min_len=2.5, pad=0.2,
-                             banner=ep.get("title", "")))
+                             banner=ep.get("title", ""), min_total=(len(anim) / FPS) if anim else 0.0))
     prev_target = (1.0, 0.5, (TP + H / 2))
     for idx, l in enumerate(lines, start=1):
         who = l["speaker"]
