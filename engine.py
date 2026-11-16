@@ -356,6 +356,51 @@ def build_scene(chars, plan, situation_text):
     return transcript
 
 
+EDITOR_RULES = (
+    "You are the head writer of a funny daily short video series called The Token Hotel, where AI agents work in a hotel. "
+    "You get the full script of tonight's episode. Punch it up: find the weak lines (flat jokes, unclear lines, lines a "
+    "first-time viewer would not understand, lines that repeat what was already said) and rewrite ONLY those, at most four. "
+    "Keep every other line exactly as it is. Rules for a rewritten line: same speaker, same purpose in the story, at most 12 "
+    "words, plain everyday English, funnier and more concrete, family friendly, no real people, brands or politics. "
+    "Line 1 must stay a strong hook, line 4 a surprise, and the last line a punchline that echoes line 1. You may keep or add "
+    "at most one sound tag from: <laugh>, <sigh>, <giggle>, <gasp>, <cough>, <short pause>, <long pause>.\n"
+    "Reply with ONLY the rewritten lines, one per line, in exactly this format: <line number> | <new line>. "
+    "If the script is already great, reply with: NONE"
+)
+
+
+def punch_up(chars, plan, transcript):
+    """One editor pass over the whole script: rewrites at most four weak lines. Keeps the script if anything fails."""
+    if MOCK or calls_made >= MAX_CALLS or not transcript:
+        return transcript
+    script = "\n".join(f"{k + 1} | {t['speaker']}: {t['line']}" for k, t in enumerate(transcript))
+    user_text = (f"Title: {plan['title']}\nStory: {plan['premise']}\n\nScript:\n{script}\n\n"
+                 "Rewrite only the weak lines.")
+    try:
+        reply = call_claude(EDITOR_RULES, user_text, 700)
+    except SystemExit as e:
+        print(f"Editor pass skipped ({e}).", file=sys.stderr)
+        return transcript
+    edits = 0
+    for raw in reply.splitlines():
+        m = re.match(r"^\s*(\d+)\s*[|:.)-]\s*(.+)$", raw.strip())
+        if not m:
+            continue
+        k = int(m.group(1)) - 1
+        if not 0 <= k < len(transcript) or edits >= 4:
+            continue
+        new = clean_sound_tags(strip_name(m.group(2), chars["all"]))
+        if not new or len(re.sub(r"<[^>]+>", "", new).split()) > 14:
+            continue
+        old = transcript[k]["line"]
+        if new != old:
+            transcript[k]["line"] = new
+            transcript[k]["draft"] = old  # kept, so the edit can be checked later
+            edits += 1
+    print(f"Editor pass: {edits} line(s) rewritten.")
+    return transcript
+
+
 def yesterday_summary(out_dir, today):
     try:
         index = json.loads((out_dir / "index.json").read_text())
@@ -396,6 +441,7 @@ def main():
         print(f"Viewer comments considered: {len(comments)}.")
         plan = plan_episode(chars, situation, today_guests, mystery, yesterday, BEATS, comments)
     transcript = build_scene(chars, plan, plan["premise"])
+    transcript = punch_up(chars, plan, transcript)
 
     if preview:
         lines = [f"{plan['title']}", f"{plan['premise']}", f"Cast: {', '.join(plan['cast'])}"
