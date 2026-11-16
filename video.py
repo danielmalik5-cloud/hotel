@@ -1842,8 +1842,17 @@ def main_dollhouse_episode():
         (ROOT / "videos").mkdir(exist_ok=True)
         shutil.copy(scene_png, ROOT / "videos" / f"scene_{DAY}.png")
 
-    anim = []  # stage 2 test: tonight's drawing as a moving cartoon clip, if one was made
+    anim = []  # tonight's drawing as a moving cartoon clip, if one was made
     clip = ROOT / "assets" / "scenes" / f"{DAY}.mp4"
+    if os.environ.get("ANIMATE") == "1" and scene_png and not clip.exists() and not MOCK:
+        try:  # on the chosen days (about 2.5 NIS each) the opening drawing is turned into a moving clip
+            import animate
+            animate.DAY, animate.KEY = DAY, KEY
+            animate.main()
+        except SystemExit as e:
+            print(f"Moving opening skipped ({e}).", file=sys.stderr)
+        except Exception as e:
+            print(f"Moving opening failed ({e}).", file=sys.stderr)
     if clip.exists():
         adir = work / "anim"
         shutil.rmtree(adir, ignore_errors=True)
