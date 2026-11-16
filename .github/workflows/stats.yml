@@ -1,0 +1,33 @@
+name: Daily views summary
+
+# Sends a short YouTube views summary to Telegram every evening (public numbers only, no login).
+on:
+  schedule:
+    - cron: "23 17 * * *"   # every day at 17:23 UTC (about 19:23 Israel time)
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  stats:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read the numbers and send the summary
+        env:
+          YT_API_KEY: ${{ secrets.YT_API_KEY }}
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          CHAT_ID: "8873549758"
+        run: python3 stats.py
+
+      - name: Keep today's numbers for tomorrow's comparison
+        run: |
+          git config user.name "token-hotel-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add stats
+          git commit -m "Views snapshot" || echo "Nothing new to save"
+          git pull --rebase || true
+          git push
