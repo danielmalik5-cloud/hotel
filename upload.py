@@ -83,6 +83,33 @@ def upload(video, title, description):
         return json.load(r)
 
 
+PLAYLIST_TITLE = "The Token Hotel – Season 1"
+
+
+def add_to_playlist(video_id):
+    """Put the new episode at the end of the season playlist. Returns a short note for Telegram."""
+    try:
+        token = access_token()
+        hdr = {"Authorization": f"Bearer {token}"}
+        req = urllib.request.Request("https://www.googleapis.com/youtube/v3/playlists?part=snippet&mine=true&maxResults=50",
+                                     headers=hdr)
+        with urllib.request.urlopen(req, timeout=60) as r:
+            lists = json.load(r).get("items", [])
+        pl = next((p["id"] for p in lists if p["snippet"]["title"].strip() == PLAYLIST_TITLE), None)
+        if not pl:
+            return "Playlist not found, the episode was not added to it."
+        body = {"snippet": {"playlistId": pl, "resourceId": {"kind": "youtube#video", "videoId": video_id}}}
+        req = urllib.request.Request("https://www.googleapis.com/youtube/v3/playlistItems?part=snippet",
+                                     data=json.dumps(body).encode(), method="POST",
+                                     headers={**hdr, "Content-Type": "application/json"})
+        urllib.request.urlopen(req, timeout=60).read()
+        return "Added to the Season 1 playlist."
+    except urllib.error.HTTPError as e:
+        return f"Could not add it to the playlist ({e.code}): add it by hand in YouTube Studio."
+    except Exception as e:
+        return f"Could not add it to the playlist ({e}): add it by hand in YouTube Studio."
+
+
 def main():
     out = ROOT / "videos" / "youtube.txt"
     out.parent.mkdir(exist_ok=True)
@@ -103,7 +130,8 @@ def main():
         sys.exit(f"Upload failed: {e.code} {body}")
     vid = res.get("id", "?")
     status = res.get("status", {}).get("privacyStatus", "?")
-    out.write_text(f"YouTube upload OK: https://youtu.be/{vid} (status: {status})\n")
+    note = add_to_playlist(vid) if vid != "?" else ""
+    out.write_text(f"YouTube upload OK: https://youtu.be/{vid} (status: {status})\n{note}\n")
     log = ROOT / "transcripts" / "youtube_uploads.json"
     done = json.loads(log.read_text()) if log.exists() else {}
     done[DAY] = {"id": vid, "status": status}
