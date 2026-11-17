@@ -98,9 +98,8 @@
     {
       "speaker": "Miss Agentic",
       "role": "Guest",
-      "line": "Pierce pours, and three agents",
-      "tag": "HANDOFF",
-      "draft": "Let me delegate that: Pierce pours, two more agents check the umbrella."
+      "line": "Let me delegate that: Pierce pours, two more agents check the umbrella.",
+      "tag": "HANDOFF"
     },
     {
       "speaker": "Pierce",
