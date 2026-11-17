@@ -2010,7 +2010,7 @@ def look_at_frames(video, dur):
     if not content:
         return []
     content.append({"type": "text", "text": "Any clear visual mistakes?"})
-    body = json.dumps({"model": os.environ.get("MODEL", "claude-haiku-5-5"), "max_tokens": 300, "system": LOOK_RULES,
+    body = json.dumps({"model": os.environ.get("MODEL", "claude-haiku-5-5"), "max_tokens": 4000, "system": LOOK_RULES,
                        "messages": [{"role": "user", "content": content}]}).encode()
     req = urllib.request.Request("https://api.anthropic.com/v1/messages", data=body, method="POST", headers={
         "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json"})
