@@ -410,7 +410,9 @@ def punch_up(chars, plan, transcript):
         if not 0 <= k < len(transcript) or edits >= 4:
             continue
         new = clean_sound_tags(strip_name(m.group(2), chars["all"]))
-        if not new or len(re.sub(r"<[^>]+>", "", new).split()) > 14:
+        words = len(re.sub(r"<[^>]+>", "", new).split())
+        # skip a rewrite that is too long, too short, or cut off in the middle (no end punctuation)
+        if not new or words > 14 or words < 4 or not re.search(r"[.!?…)\"'”]\s*(<[^>]+>)?\s*$", new):
             continue
         old = transcript[k]["line"]
         if new != old:

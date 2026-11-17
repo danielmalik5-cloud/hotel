@@ -2014,15 +2014,23 @@ def look_at_frames(video, dur):
                        "messages": [{"role": "user", "content": content}]}).encode()
     req = urllib.request.Request("https://api.anthropic.com/v1/messages", data=body, method="POST", headers={
         "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json"})
-    try:
-        with urllib.request.urlopen(req, timeout=90) as r:
-            data = json.load(r)
-        text = "".join(b.get("text", "") for b in data.get("content", []) if isinstance(b, dict)).strip()
-    except Exception as e:
-        print(f"Frame check skipped ({e}).", file=sys.stderr)
-        return []
-    print("Frame check:", text)
-    if not text or text.upper().startswith("OK"):
+    text = ""
+    for attempt in range(2):
+        try:
+            with urllib.request.urlopen(req, timeout=90) as r:
+                data = json.load(r)
+            text = "".join(b.get("text", "") for b in data.get("content", []) if isinstance(b, dict)).strip()
+        except Exception as e:
+            print(f"Frame check skipped ({e}).", file=sys.stderr)
+            return []
+        if text:
+            break
+        print("Frame check: empty answer. stop_reason:", data.get("stop_reason"),
+              "blocks:", [b.get("type") for b in data.get("content", []) if isinstance(b, dict)], file=sys.stderr)
+    print("Frame check:", text or "(no answer)")
+    if not text:
+        return ["The frame check by Claude gave no answer today, so the picture was not checked."]
+    if text.upper().startswith("OK"):
         return []
     return ["Looks wrong (checked by Claude on still frames): " + ln.strip("-• ").strip()
             for ln in text.splitlines() if ln.strip()][:3]
