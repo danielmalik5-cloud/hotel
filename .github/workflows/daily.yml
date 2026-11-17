@@ -56,6 +56,12 @@ jobs:
           case "$(date -u +%u)" in 1|4) export ANIMATE=1 ;; esac
           python3 video.py
 
+      - name: Write the upload texts (YouTube and TikTok)
+        continue-on-error: true
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python3 package.py
+
       - name: Check the video quality
         continue-on-error: true
         env:
@@ -94,7 +100,13 @@ jobs:
             -F width=1080 -F height=1920 \
             -F duration="$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$f" | cut -d. -f1)" \
             -F caption="The Token Hotel - $(date -u +%F)" \
+            -F reply_markup='{"inline_keyboard":[[{"text":"✅ Approve & upload to YouTube","callback_data":"up:'"$(date -u +%F)"'"}]]}' \
             -F video=@"$f" > /dev/null
+          if [ -s videos/package.html ]; then
+            curl -sS --fail-with-body --retry 5 --retry-delay 5 --retry-all-errors -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
+              -d chat_id="${CHAT_ID}" -d parse_mode=HTML \
+              --data-urlencode text="$(cat videos/package.html)" > /dev/null
+          fi
 
       - name: Tell Telegram which viewer comment inspired the episode
         continue-on-error: true

@@ -1,0 +1,83 @@
+name: Approve and upload to YouTube
+
+# Every 10 minutes: if the owner pressed "Approve & upload" under a daily video in Telegram,
+# re-make that episode (free: voices and drawings are saved) and upload it to YouTube as public.
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: youtube-upload
+  cancel-in-progress: false
+
+jobs:
+  approve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Look for an approval in Telegram
+        id: check
+        env:
+          BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          CHAT_ID: "8873549758"
+        run: python3 approve.py
+
+      - name: Install video tools
+        if: steps.check.outputs.day != ''
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg fonts-dejavu-core
+          pip install pillow numpy
+
+      - name: Make the approved episode
+        if: steps.check.outputs.day != ''
+        env:
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          DAY: ${{ steps.check.outputs.day }}
+          DOLLHOUSE_EP: "1"
+        run: python3 video.py
+
+      - name: Write the upload texts if missing
+        if: steps.check.outputs.day != ''
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          DAY: ${{ steps.check.outputs.day }}
+        run: |
+          [ -f "transcripts/${DAY}_package.json" ] || python3 package.py
+
+      - name: Upload to YouTube as public
+        if: steps.check.outputs.day != ''
+        env:
+          YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+          YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+          YOUTUBE_REFRESH_TOKEN: ${{ secrets.TOUTUBE_REFRESH_TOKEN }}
+          DAY: ${{ steps.check.outputs.day }}
+          PRIVACY: "public"
+        run: python3 upload.py
+
+      - name: Save the upload record
+        if: always() && steps.check.outputs.day != ''
+        run: |
+          git config user.name "token-hotel-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add transcripts assets
+          git commit -m "YouTube upload ${{ steps.check.outputs.day }}" || echo "Nothing new to save"
+          git pull --rebase || true
+          git push || true
+
+      - name: Tell Telegram the result
+        if: always() && steps.check.outputs.day != ''
+        continue-on-error: true
+        env:
+          BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          CHAT_ID: "8873549758"
+        run: |
+          msg=$(cat videos/youtube.txt 2>/dev/null || echo "YouTube upload failed before it started. Claude can check the log.")
+          curl -sS --fail-with-body --retry 5 --retry-delay 5 --retry-all-errors -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
+            --data-urlencode chat_id="${CHAT_ID}" --data-urlencode text="${msg}" > /dev/null

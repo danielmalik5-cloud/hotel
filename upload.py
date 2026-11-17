@@ -29,6 +29,11 @@ CATEGORY_ENTERTAINMENT = "24"
 
 
 def episode_text():
+    pkg_file = ROOT / "transcripts" / f"{DAY}_package.json"
+    if pkg_file.exists():  # texts written by package.py
+        pkg = json.loads(pkg_file.read_text(encoding="utf-8"))
+        TAGS[:] = pkg.get("youtube_tags") or TAGS
+        return pkg["youtube_title"], pkg["youtube_description"]
     ep = json.loads((ROOT / "transcripts" / f"{DAY}.json").read_text(encoding="utf-8"))
     title = (ep.get("title") or "A night at the Token Hotel").strip()
     full_title = f"{title} | The Token Hotel"
@@ -37,7 +42,7 @@ def episode_text():
     lines = [
         ep.get("situation", "").strip(),
         "",
-        "Every episode is improvised by AI agents. New stories every morning.",
+        "Every episode is improvised by AI agents. Comment a guest for tomorrow! 👇",
         "",
         "#Shorts #AI #AIagents #AIanimation #TheTokenHotel",
     ]
@@ -99,6 +104,10 @@ def main():
     vid = res.get("id", "?")
     status = res.get("status", {}).get("privacyStatus", "?")
     out.write_text(f"YouTube upload OK: https://youtu.be/{vid} (status: {status})\n")
+    log = ROOT / "transcripts" / "youtube_uploads.json"
+    done = json.loads(log.read_text()) if log.exists() else {}
+    done[DAY] = {"id": vid, "status": status}
+    log.write_text(json.dumps(done, indent=1))
     print(out.read_text())
 
 
