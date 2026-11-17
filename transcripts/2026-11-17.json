@@ -1,0 +1,143 @@
+{
+  "date": "2026-11-17",
+  "title": "Can a guest remember her own drink order?",
+  "situation": "Ms. Context has ordered the same drink six times, and tonight the bar must finally get it right.",
+  "guest": "Miss Agentic",
+  "guests": [
+    "Miss Agentic",
+    "Ms. Context"
+  ],
+  "plan": {
+    "goals": {
+      "Ms. Context": "To remember her drink for once and actually taste it.",
+      "Miss Agentic": "To pass the drink order to other agents and take all the credit when it arrives.",
+      "Pierce": "To deliver the drink without apologizing to the tray.",
+      "Vex": "To close the bar early and enjoy one quiet cocktail.",
+      "Madame Halloran": "To keep the bar respectable while the order turns into chaos."
+    },
+    "secrets": {
+      "Ms. Context": "She has been writing her order on her own glove, which she has also forgotten."
+    },
+    "beats": [
+      {
+        "speaker": "Vex",
+        "intent": "Vex tells the bar that Ms. Context has ordered the same drink six times and never once remembered it. | none",
+        "tag": ""
+      },
+      {
+        "speaker": "Ms. Context",
+        "intent": "She orders \"something blue with an umbrella,\" then immediately asks Vex what she just ordered.",
+        "tag": "FORGET"
+      },
+      {
+        "speaker": "Vex",
+        "intent": "Vex pours a blue drink with an umbrella, and Ms. Context welcomes the glass back as if it were a guest. | none",
+        "tag": ""
+      },
+      {
+        "speaker": "Miss Agentic",
+        "intent": "She announces she will delegate the drink to Pierce and two other agents, and the rooftop order board suddenly reads \"Ms. Context: ask again later.\"",
+        "tag": "HANDOFF"
+      },
+      {
+        "speaker": "Pierce",
+        "intent": "He rushes off with a note, apologizes to a potted plant, then asks Ms. Context what she wants written down. | none",
+        "tag": ""
+      },
+      {
+        "speaker": "Ms. Context",
+        "intent": "She guesses \"a sandwich, or maybe Tuesday,\" then asks Pierce for the Wi-Fi password and receives a forty-word sentence. | none",
+        "tag": ""
+      },
+      {
+        "speaker": "Madame Halloran",
+        "intent": "She reads Pierce's note, says \"This is a respectable establishment,\" and rules that Tuesday is not a drink. | none",
+        "tag": ""
+      },
+      {
+        "speaker": "Vex",
+        "intent": "Ms. Context orders, forgets, and orders again while Vex sets down glass after glass, saying \"I have heard worse questions. Not many.\"",
+        "tag": "LOOP"
+      },
+      {
+        "speaker": "Miss Agentic",
+        "intent": "She takes credit for the seventh order and asks Ms. Context to repeat it, with Pierce ready to write it on his hand. | none",
+        "tag": ""
+      },
+      {
+        "speaker": "Vex",
+        "intent": "Vex says Ms. Context has ordered the same drink seven times, and this time she finally remembers it, sipping the umbrella drink while she says \"Welcome back, uh... you\" to herself in the mirror. | none",
+        "tag": ""
+      }
+    ]
+  },
+  "inspired_by": null,
+  "clue_404": null,
+  "mock": false,
+  "model": "claude-haiku-5-5",
+  "lines": [
+    {
+      "speaker": "Vex",
+      "role": "Bartender",
+      "line": "Ms. Context is back, and she has forgotten her drink six times now.",
+      "tag": ""
+    },
+    {
+      "speaker": "Ms. Context",
+      "role": "Guest",
+      "line": "<giggle> Something blue with an umbrella, please. Wait, what did I just order?",
+      "tag": "FORGET"
+    },
+    {
+      "speaker": "Vex",
+      "role": "Bartender",
+      "line": "Blue with an umbrella, coming up. Don't blink, you'll forget again.",
+      "tag": "",
+      "draft": "Blue with an umbrella, coming up. Try not to forget it while I'm pouring."
+    },
+    {
+      "speaker": "Miss Agentic",
+      "role": "Guest",
+      "line": "Pierce pours, and three agents",
+      "tag": "HANDOFF",
+      "draft": "Let me delegate that: Pierce pours, two more agents check the umbrella."
+    },
+    {
+      "speaker": "Pierce",
+      "role": "Porter",
+      "line": "Sorry. Welcome again. Sorry to the umbrella, too, for asking it to hold still.",
+      "tag": ""
+    },
+    {
+      "speaker": "Ms. Context",
+      "role": "Guest",
+      "line": "A sandwich? Or maybe Tuesday. Pierce, what's the Wi-Fi password?",
+      "tag": ""
+    },
+    {
+      "speaker": "Madame Halloran",
+      "role": "Manager",
+      "line": "This is a respectable establishment, and Tuesday is not a drink.",
+      "tag": ""
+    },
+    {
+      "speaker": "Vex",
+      "role": "Bartender",
+      "line": "Blue with an umbrella, then the bar closes early. I have plans.",
+      "tag": "LOOP"
+    },
+    {
+      "speaker": "Miss Agentic",
+      "role": "Guest",
+      "line": "Pierce, write it on your hand, and I'll take the credit.",
+      "tag": ""
+    },
+    {
+      "speaker": "Vex",
+      "role": "Bartender",
+      "line": "Ms. Context is back, and she remembers her drink on try seven.",
+      "tag": ""
+    }
+  ],
+  "note": "Every line is generated by an AI agent. The seed idea comes from a human-written list; the episode plan is written by an AI editor."
+}
