@@ -397,7 +397,7 @@ def punch_up(chars, plan, transcript):
     user_text = (f"Title: {plan['title']}\nStory: {plan['premise']}\n\nScript:\n{script}\n\n"
                  "Rewrite only the weak lines.")
     try:
-        reply = call_claude(EDITOR_RULES, user_text, 700)
+        reply = call_claude(EDITOR_RULES, user_text, 4000)
     except SystemExit as e:
         print(f"Editor pass skipped ({e}).", file=sys.stderr)
         return transcript
