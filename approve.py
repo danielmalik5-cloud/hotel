@@ -22,6 +22,13 @@ def tg(method, **params):
         return json.load(r)
 
 
+def answer(q, text):
+    try:  # an old button press can no longer be answered; that must not stop the upload
+        tg("answerCallbackQuery", callback_query_id=q["id"], text=text)
+    except Exception as e:
+        print("Could not answer the button press:", e)
+
+
 def main():
     updates = tg("getUpdates", timeout=0, allowed_updates=json.dumps(["callback_query"])).get("result", [])
     done = json.loads((ROOT / "transcripts" / "youtube_uploads.json").read_text()) \
@@ -33,13 +40,13 @@ def main():
             continue
         m = re.fullmatch(r"up:(\d{4}-\d{2}-\d{2})", q.get("data", ""))
         if str(q.get("from", {}).get("id")) != OWNER or not m:
-            tg("answerCallbackQuery", callback_query_id=q["id"], text="Not allowed")
+            answer(q, "Not allowed")
             continue
         if m.group(1) in done:
-            tg("answerCallbackQuery", callback_query_id=q["id"], text="Already on YouTube")
+            answer(q, "Already on YouTube")
             continue
         day = m.group(1)
-        tg("answerCallbackQuery", callback_query_id=q["id"], text="Uploading to YouTube...")
+        answer(q, "Uploading to YouTube...")
     if updates:  # mark them as read, so they are not handled twice
         tg("getUpdates", offset=updates[-1]["update_id"] + 1, timeout=0)
     if day:
