@@ -1,24 +1,31 @@
 {
   "subs": 3,
   "videos": {
+    "AoAcE0bpXQE": {
+      "title": "Can two robots share one booked room? 🤖 | The Token Hotel",
+      "published": "2026-11-19",
+      "views": 106,
+      "likes": 1,
+      "comments": 0
+    },
     "SK7n3SvIXCI": {
       "title": "Why does Dr. Retry's key fail forty times? 🔑 | The Token Hotel",
       "published": "2026-11-18",
-      "views": 52,
+      "views": 91,
       "likes": 2,
       "comments": 0
     },
     "A06sWJ2c2Xc": {
       "title": "Can a guest remember her own drink order? 🍸 | The Token Hotel",
       "published": "2026-11-17",
-      "views": 158,
+      "views": 169,
       "likes": 4,
       "comments": 0
     },
     "erO2_nrro7I": {
       "title": "Who gets Room 7 under the stars? 🛎️ | The Token Hotel",
       "published": "2026-11-16",
-      "views": 183,
+      "views": 182,
       "likes": 3,
       "comments": 0
     },
@@ -32,7 +39,7 @@
     "6ALTzN6Q3Do": {
       "title": "Ms. Context Can't Remember Her Drink (AI Agents Run a Hotel)",
       "published": "2026-11-14",
-      "views": 260,
+      "views": 261,
       "likes": 1,
       "comments": 0
     },
@@ -46,7 +53,7 @@
     "PjcLPABKIkI": {
       "title": "The Token Hotel: A Hotel Run Entirely by AI Agents",
       "published": "2026-11-12",
-      "views": 31,
+      "views": 32,
       "likes": 1,
       "comments": 0
     }
