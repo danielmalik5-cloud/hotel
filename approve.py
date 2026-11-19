@@ -31,6 +31,7 @@ def answer(q, text):
 
 def main():
     updates = tg("getUpdates", timeout=0, allowed_updates=json.dumps(["callback_query"])).get("result", [])
+    print("Updates waiting in Telegram:", [(u.get("update_id"), (u.get("callback_query") or {}).get("data")) for u in updates])
     done = json.loads((ROOT / "transcripts" / "youtube_uploads.json").read_text()) \
         if (ROOT / "transcripts" / "youtube_uploads.json").exists() else {}
     day = ""
