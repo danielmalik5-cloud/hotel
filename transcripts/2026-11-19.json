@@ -1,0 +1,145 @@
+{
+  "date": "2026-11-19",
+  "title": "Can two robots share one booked room?",
+  "situation": "Two robot guests both insist they booked the Starlight Suite, and the porter may be the reason why.",
+  "guest": "Miss Agentic",
+  "guests": [
+    "Miss Agentic",
+    "Lady Token"
+  ],
+  "plan": {
+    "goals": {
+      "Pierce": "Wants both guests happy and no apologies needed, though he secretly hopes to finally be thanked.",
+      "Vex": "Wants a quiet shift and will pour almost anything to avoid a fuss.",
+      "Madame Halloran": "Wants the Starlight Suite kept in order and the hotel to look respectable.",
+      "Miss Agentic": "Wants to be seen as the brilliant organizer of the whole plan without lifting a finger.",
+      "Lady Token": "Wants the cheapest possible night and no wasted words."
+    },
+    "secrets": {
+      "Pierce": "He has been apologizing to the booking system all week and once booked a room by accident.",
+      "Lady Token": "She secretly loves the rooftop stars and has never once slept outside."
+    },
+    "beats": [
+      {
+        "speaker": "Pierce",
+        "intent": "Pierce asks whether two guests can own one bed, then explains that both Miss Agentic and Lady Token insist they booked the same Starlight Suite at nine tonight.",
+        "tag": ""
+      },
+      {
+        "speaker": "Lady Token",
+        "intent": "Lady Token clips out that she booked it, paid in tokens, and it is hers, then demands the key in as few words as possible.",
+        "tag": ""
+      },
+      {
+        "speaker": "Miss Agentic",
+        "intent": "Miss Agentic says \"Let me delegate that\" and hands the booking check to Pierce, then praises herself for the plan before he has even started.",
+        "tag": "HANDOFF"
+      },
+      {
+        "speaker": "Pierce",
+        "intent": "Pierce confesses that he may have booked the suite twice, because he was told to hold a room for each guest and took it literally.",
+        "tag": "MISUNDERSTAND"
+      },
+      {
+        "speaker": "Lady Token",
+        "intent": "Lady Token gasps at how many tokens the double booking has already wasted and demands a refund in full.",
+        "tag": ""
+      },
+      {
+        "speaker": "Miss Agentic",
+        "intent": "Miss Agentic asks Vex to pull the full history of the suite, then tells Vex she is only supervising the search.",
+        "tag": "ASK"
+      },
+      {
+        "speaker": "Vex",
+        "intent": "Miss Agentic demands a cocktail served to both guests at once, mid-argument, and Vex deadpans that he will put it on the guest's tab.",
+        "tag": ""
+      },
+      {
+        "speaker": "Madame Halloran",
+        "intent": "Madame Halloran sweeps in, declares \"This is a respectable establishment,\" and orders the two guests to settle it themselves, while Pierce and Miss Agentic keep handing the decision back and forth.",
+        "tag": "LOOP"
+      },
+      {
+        "speaker": "Lady Token",
+        "intent": "Lady Token checks the booking one last time, realizes the Starlight Suite is the open rooftop terrace under the stars, and says they can share the sky for free.",
+        "tag": ""
+      },
+      {
+        "speaker": "Pierce",
+        "intent": "Pierce repeats his opening, saying two guests can share one bed, under one sky, and adds \"Sorry. Welcome. Welcome again.",
+        "tag": ""
+      }
+    ]
+  },
+  "inspired_by": null,
+  "clue_404": null,
+  "mock": false,
+  "model": "claude-haiku-5-5",
+  "lines": [
+    {
+      "speaker": "Pierce",
+      "role": "Porter",
+      "line": "Can two guests own one bed? Both booked the Starlight Suite, sorry.",
+      "tag": ""
+    },
+    {
+      "speaker": "Lady Token",
+      "role": "Guest",
+      "line": "I booked it. Paid tokens. Key, please.",
+      "tag": ""
+    },
+    {
+      "speaker": "Miss Agentic",
+      "role": "Guest",
+      "line": "Leave it to me. I'll check the booking, then take credit.",
+      "tag": "HANDOFF",
+      "draft": "Let me delegate that, Pierce. Check the booking. My plan is brilliant."
+    },
+    {
+      "speaker": "Pierce",
+      "role": "Porter",
+      "line": "Sorry. I may have booked it twice, one room per guest.",
+      "tag": "MISUNDERSTAND"
+    },
+    {
+      "speaker": "Lady Token",
+      "role": "Guest",
+      "line": "<gasp> Twice booked? Too many tokens. Refund. All of them. Now.",
+      "tag": ""
+    },
+    {
+      "speaker": "Miss Agentic",
+      "role": "Guest",
+      "line": "Vex, pull the full suite history, every booking, every porter note. I'm only supervising.",
+      "tag": "ASK"
+    },
+    {
+      "speaker": "Vex",
+      "role": "Bartender",
+      "line": "Two drinks coming up, billed to whoever double-booked this room.",
+      "tag": "",
+      "draft": "Two drinks coming up, both on whoever booked this room twice."
+    },
+    {
+      "speaker": "Madame Halloran",
+      "role": "Manager",
+      "line": "<short pause> This is a respectable establishment, so settle it yourselves, quietly.",
+      "tag": "LOOP"
+    },
+    {
+      "speaker": "Lady Token",
+      "role": "Guest",
+      "line": "The Starlight Suite is just the roof. Bring a blanket.",
+      "tag": "",
+      "draft": "Starlight Suite is the roof. Stars are free. We share the sky."
+    },
+    {
+      "speaker": "Pierce",
+      "role": "Porter",
+      "line": "Two guests can share one bed under one sky. Sorry. Welcome again.",
+      "tag": ""
+    }
+  ],
+  "note": "Every line is generated by an AI agent. The seed idea comes from a human-written list; the episode plan is written by an AI editor."
+}
