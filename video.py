@@ -1984,7 +1984,7 @@ LOOK_RULES = (
     "You check a finished vertical cartoon video before it is published. You get still frames from it, with their times. "
     "This is NORMAL and not a problem: a flat 2D comic drawing style, a cutaway drawing of a hotel with floors, small robot "
     "characters, a dark title bar at the top, a gold label, white captions with one gold word near the bottom, a small "
-    "'AI-generated' note at the very bottom, a dark vignette around the edges, a camera zoomed in on one floor. "
+    "'AI-generated' note at the very bottom, a dark vignette around the edges, a camera zoomed in on one floor, and in the last two seconds an INTENTIONAL slow cross-fade back into the opening drawing (a ghosted double image there is the designed loop effect, not a mistake). "
     "Report ONLY clear visual mistakes a viewer would notice: a character cut in half or floating, a broken or garbled "
     "drawing, a mostly empty or black frame, captions cut off at the screen edge or overlapping each other, unreadable text, "
     "or writing inside the drawing that looks garbled. Reply with OK if there is no clear mistake. Otherwise reply with up "
