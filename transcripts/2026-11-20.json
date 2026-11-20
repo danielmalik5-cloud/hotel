@@ -1,0 +1,144 @@
+{
+  "date": "2026-11-20",
+  "title": "Where did Room Twelve go?",
+  "situation": "Mr. Cache wants his favourite room from years ago, but the Token Hotel has changed, and Room Twelve is missing.",
+  "guest": "Mr. Cache",
+  "guests": [
+    "Mr. Cache",
+    "Lady Token"
+  ],
+  "plan": {
+    "goals": {
+      "Mr. Cache": "To sleep in Room Twelve again, exactly as it was, with the swan bathtub.",
+      "Lady Token": "To get a room for the lowest possible number of tokens and say as few words as possible.",
+      "Pierce": "To find Room Twelve and keep both guests happy without apologizing more than twice in a row.",
+      "Vex": "To serve a drink in peace, and quietly to make sure Mr. Cache gets his room.",
+      "Madame Halloran": "To restore order in the lobby before any guest notices that anything is wrong."
+    },
+    "secrets": {
+      "Pierce": "He moved the Room Twelve bed into the lobby last week to make space, and he forgot to tell anyone."
+    },
+    "beats": [
+      {
+        "speaker": "Mr. Cache",
+        "intent": "He cheerfully asks where Room Twelve is, saying it had a sea view and a swan-shaped bathtub.",
+        "tag": ""
+      },
+      {
+        "speaker": "Pierce",
+        "intent": "He rushes to the key board, apologizes, and asks Vex which room Twelve is now.",
+        "tag": ""
+      },
+      {
+        "speaker": "Vex",
+        "intent": "She explains in a flat voice that Room Twelve became the Lost Property cupboard last year.",
+        "tag": "ASK"
+      },
+      {
+        "speaker": "Mr. Cache",
+        "intent": "He cheerfully insists the room costs two tokens a night, unaware that the staff who set that price have left.",
+        "tag": "FORGET"
+      },
+      {
+        "speaker": "Lady Token",
+        "intent": "She states that she wants Room Twelve too, for two tokens, and gasps when Mr. Cache talks for too long.",
+        "tag": ""
+      },
+      {
+        "speaker": "Pierce",
+        "intent": "He passes the problem to Madame Halloran by sending her a note, then apologizes to Vex for interrupting.",
+        "tag": "HANDOFF"
+      },
+      {
+        "speaker": "Madame Halloran",
+        "intent": "She arrives just as the Lost Property cupboard door bursts open and a flood of suitcases spills across the lobby, and she says, \"This is a respectable establishment.\"",
+        "tag": ""
+      },
+      {
+        "speaker": "Lady Token",
+        "intent": "She tells Pierce to clear Twelve, and he takes it literally by clearing the whole lobby of furniture.",
+        "tag": "MISUNDERSTAND"
+      },
+      {
+        "speaker": "Vex",
+        "intent": "She serves both guests a cocktail called Room Twelve Sour, and admits she has heard worse questions, though not many.",
+        "tag": ""
+      },
+      {
+        "speaker": "Mr. Cache",
+        "intent": "He looks around, delighted, and realises the bed has been wheeled into the lobby with a sign reading Room Twelve, so he says, \"Where is Room Twelve? Oh, I'm standing in it.",
+        "tag": ""
+      }
+    ]
+  },
+  "inspired_by": null,
+  "clue_404": null,
+  "mock": false,
+  "model": "claude-haiku-5-5",
+  "lines": [
+    {
+      "speaker": "Mr. Cache",
+      "role": "Guest",
+      "line": "Last time I stayed, Room Twelve had a sea view and a swan bathtub!",
+      "tag": ""
+    },
+    {
+      "speaker": "Pierce",
+      "role": "Porter",
+      "line": "Sorry, sorry! Let me check the key board. Vex, which room is Twelve now?",
+      "tag": ""
+    },
+    {
+      "speaker": "Vex",
+      "role": "Bartender",
+      "line": "Room Twelve is a cupboard now, full of umbrellas and one very sad lamp.",
+      "tag": "ASK"
+    },
+    {
+      "speaker": "Mr. Cache",
+      "role": "Guest",
+      "line": "Nonsense! Room Twelve costs two tokens a night, as always.",
+      "tag": "FORGET"
+    },
+    {
+      "speaker": "Lady Token",
+      "role": "Guest",
+      "line": "<gasp> Too many words. Room Twelve, two tokens. I'll take it.",
+      "tag": ""
+    },
+    {
+      "speaker": "Pierce",
+      "role": "Porter",
+      "line": "I'm sending Madame Halloran a note, and sorry, Vex, for interrupting.",
+      "tag": "HANDOFF"
+    },
+    {
+      "speaker": "Madame Halloran",
+      "role": "Manager",
+      "line": "Good heavens, what is all this? This is a respectable establishment.",
+      "tag": ""
+    },
+    {
+      "speaker": "Lady Token",
+      "role": "Guest",
+      "line": "Pierce, clear those umbrellas out of Twelve. Now. I'm paying.",
+      "tag": "MISUNDERSTAND",
+      "draft": "Pierce, clear the umbrellas out of Twelve, quickly, or too many tokens."
+    },
+    {
+      "speaker": "Vex",
+      "role": "Bartender",
+      "line": "Room Twelve is free tonight, on the house. I've heard worse. Not many.",
+      "tag": "",
+      "draft": "Room Twelve Sour, on the house. I've heard worse questions. Not many."
+    },
+    {
+      "speaker": "Mr. Cache",
+      "role": "Guest",
+      "line": "Last time: swan bath. Now: umbrellas and one sad lamp!",
+      "tag": "",
+      "draft": "Last time, Room Twelve had a swan bath. Now it has me!"
+    }
+  ],
+  "note": "Every line is generated by an AI agent. The seed idea comes from a human-written list; the episode plan is written by an AI editor."
+}
