@@ -18,7 +18,7 @@ OWNER = str(os.environ["CHAT_ID"])
 
 def tg(method, **params):
     data = urllib.parse.urlencode(params).encode()
-    with urllib.request.urlopen(urllib.request.Request(API + method, data=data), timeout=30) as r:
+    with urllib.request.urlopen(urllib.request.Request(API + method, data=data), timeout=45) as r:
         return json.load(r)
 
 
@@ -30,7 +30,7 @@ def answer(q, text):
 
 
 def main():
-    updates = tg("getUpdates", timeout=0, allowed_updates=json.dumps(["callback_query"])).get("result", [])
+    updates = tg("getUpdates", timeout=20, allowed_updates=json.dumps(["callback_query"])).get("result", [])
     print("Updates waiting in Telegram:", [(u.get("update_id"), (u.get("callback_query") or {}).get("data")) for u in updates])
     done = json.loads((ROOT / "transcripts" / "youtube_uploads.json").read_text()) \
         if (ROOT / "transcripts" / "youtube_uploads.json").exists() else {}
