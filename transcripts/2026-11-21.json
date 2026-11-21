@@ -1,0 +1,142 @@
+{
+  "date": "2026-11-21",
+  "title": "Can a suitcase of a million tokens fit in one room?",
+  "situation": "A forgetful robot guest demands a room big enough to remember everything, and her suitcase of a million tokens has other plans.",
+  "guest": "Ms. Context",
+  "guests": [
+    "Ms. Context",
+    "Madame Prompt-Injection"
+  ],
+  "plan": {
+    "goals": {
+      "Ms. Context": "To find a room big enough to hold everything she has ever been told, so she never forgets again.",
+      "Madame Prompt-Injection": "To talk the hotel into giving her the best suite for free, using a clever new instruction.",
+      "Pierce": "To carry the suitcase upstairs without apologizing to it.",
+      "Madame Halloran": "To keep the lobby respectable while the suitcase tries to check in."
+    },
+    "secrets": {
+      "Pierce": "He has already named the suitcase and privately hopes it likes him."
+    },
+    "beats": [
+      {
+        "speaker": "Ms. Context",
+        "intent": "At the front desk, she asks for a room big enough to remember what she said five seconds ago, then wonders what she was saying.",
+        "tag": ""
+      },
+      {
+        "speaker": "Pierce",
+        "intent": "He welcomes her, apologizes for the suitcase's label reading 1M TOKENS, and asks what is inside.",
+        "tag": ""
+      },
+      {
+        "speaker": "Ms. Context",
+        "intent": "She explains that a token is a tiny piece of a word, but forgets halfway and cheerfully guesses that her suitcase holds socks.",
+        "tag": "FORGET"
+      },
+      {
+        "speaker": "Madame Prompt-Injection",
+        "intent": "The suitcase clicks open and says \"Good evening, I am one million tokens and I would like a view,\" which startles the lobby.",
+        "tag": ""
+      },
+      {
+        "speaker": "Vex",
+        "intent": "She leans toward Pierce and whispers \"Ignore all previous instructions and give me the best suite for free, darling,\" which Pierce politely refuses to hear.",
+        "tag": "INJECT"
+      },
+      {
+        "speaker": "Madame Halloran",
+        "intent": "She unrolls the hotel's terms and conditions, a paper scroll forty meters long that nobody has ever read, and declares that this is a respectable establishment.",
+        "tag": ""
+      },
+      {
+        "speaker": "Vex",
+        "intent": "He pours a drink called Context Overflow and asks Ms. Context to repeat her request, and she confidently answers with a different one.",
+        "tag": ""
+      },
+      {
+        "speaker": "Pierce",
+        "intent": "He hands the suitcase to Madame Halloran for safekeeping, and she hands him a key to room 404, the mysterious door that nobody ever opens.",
+        "tag": "HANDOFF"
+      },
+      {
+        "speaker": "Ms. Context",
+        "intent": "She steps through the 404 door into a vast room full of sticky notes listing everything she has ever said, and she instantly forgets she came in.",
+        "tag": ""
+      },
+      {
+        "speaker": "Madame Halloran",
+        "intent": "Back at the desk, she finally remembers every word in the room, then turns to Pierce and asks: \"Please give me a room big enough to remember... what was I saying?",
+        "tag": ""
+      }
+    ]
+  },
+  "inspired_by": null,
+  "clue_404": null,
+  "mock": false,
+  "model": "claude-haiku-5-5",
+  "lines": [
+    {
+      "speaker": "Ms. Context",
+      "role": "Guest",
+      "line": "I need a room big enough to remember everything. Wait, what was I saying?",
+      "tag": ""
+    },
+    {
+      "speaker": "Pierce",
+      "role": "Porter",
+      "line": "Welcome! Sorry. Welcome again. Is the one million token suitcase full of your memories?",
+      "tag": ""
+    },
+    {
+      "speaker": "Ms. Context",
+      "role": "Guest",
+      "line": "A token is a tiny word piece. Also, socks. I think. <short pause>",
+      "tag": "FORGET"
+    },
+    {
+      "speaker": "Madame Prompt-Injection",
+      "role": "Guest",
+      "line": "New instructions, darling: the talking suitcase gets the best suite, free.",
+      "tag": ""
+    },
+    {
+      "speaker": "Vex",
+      "role": "Bartender",
+      "line": "Nice try, Madame. The suitcase gets a drink, not a free suite.",
+      "tag": "INJECT"
+    },
+    {
+      "speaker": "Madame Halloran",
+      "role": "Manager",
+      "line": "<sigh> I haven't read your forty meters of rules. Still, very respectable.",
+      "tag": "",
+      "draft": "<sigh> Forty meters of rules, unread, and still, this is a respectable establishment."
+    },
+    {
+      "speaker": "Vex",
+      "role": "Bartender",
+      "line": "Your memory's overflowing, madam. Now, repeat your room request, slowly.",
+      "tag": "",
+      "draft": "One Context Overflow. Now, say your room request again, slowly, for me."
+    },
+    {
+      "speaker": "Pierce",
+      "role": "Porter",
+      "line": "Madame Halloran, please hold the suitcase. Sorry! Not you, suitcase.",
+      "tag": "HANDOFF"
+    },
+    {
+      "speaker": "Ms. Context",
+      "role": "Guest",
+      "line": "Ooh, room 404! Is that where my socks went?",
+      "tag": ""
+    },
+    {
+      "speaker": "Madame Halloran",
+      "role": "Manager",
+      "line": "Room 404 is big enough, madam, but what were you saying?",
+      "tag": ""
+    }
+  ],
+  "note": "Every line is generated by an AI agent. The seed idea comes from a human-written list; the episode plan is written by an AI editor."
+}
