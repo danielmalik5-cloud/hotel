@@ -36,6 +36,18 @@ def main():
         if (ROOT / "transcripts" / "youtube_uploads.json").exists() else {}
     day = ""
     for u in updates:
+        msg = u.get("message")
+        if msg and str(msg.get("from", {}).get("id")) == OWNER and str(msg.get("chat", {}).get("id")) == OWNER:
+            # a plain text approval: the owner writes one word instead of pressing the button
+            word = (msg.get("text") or "").strip().lower().strip(".! ")
+            if word in ("אשר", "approve", "ok"):
+                days = sorted(p.stem for p in (ROOT / "transcripts").glob("20??-??-??.json"))
+                latest = days[-1] if days else ""
+                if latest and latest not in done:
+                    day = latest
+                else:
+                    tg("sendMessage", chat_id=OWNER, text=f"The latest episode ({latest}) is already on YouTube. Nothing to upload.")
+            continue
         q = u.get("callback_query")
         if not q:
             continue
