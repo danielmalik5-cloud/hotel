@@ -1,0 +1,145 @@
+{
+  "date": "2026-11-22",
+  "title": "Can two guests both check into one room?",
+  "situation": "Two guests swear they booked the same room at the same moment, and the hotel must sort it out.",
+  "guest": "Captain Timeout",
+  "guests": [
+    "Captain Timeout",
+    "Ms. Context"
+  ],
+  "plan": {
+    "goals": {
+      "Captain Timeout": "To sleep in Room 12, the only room with a view of the sea he can see from his bunk.",
+      "Ms. Context": "To stay in Room 12 under the stars, which she remembers as \"the one with the pillows, or was that the bathtub?\"",
+      "Pierce": "To make both guests happy without being blamed for anything, even things that did not happen.",
+      "Vex": "To get through one quiet shift without anyone asking for a cocktail named after their own mistakes.",
+      "Madame Halloran": "To restore order to the hotel, while secretly enjoying every bit of the chaos."
+    },
+    "secrets": {
+      "Captain Timeout": "His booking request timed out, then quietly went through three times.",
+      "Ms. Context": "She wrote her booking on her hand and cannot remember which hand."
+    },
+    "beats": [
+      {
+        "speaker": "Captain Timeout",
+        "intent": "Stops mid-sentence after claiming he booked Room 12 at nine sharp, then restarts the claim from the beginning.",
+        "tag": ""
+      },
+      {
+        "speaker": "Ms. Context",
+        "intent": "Arrives, greets Pierce by mistake, and insists she booked Room 12 at nine sharp too, though she is not sure which nine.",
+        "tag": "FORGET"
+      },
+      {
+        "speaker": "Madame Halloran",
+        "intent": "Declares \"This is a respectable establishment,\" then hands the booking dispute to Pierce to check the system.",
+        "tag": "HANDOFF"
+      },
+      {
+        "speaker": "Vex",
+        "intent": "Reports that the booking log lists a third booking for Room 12 under the name \"Room 12,\" and that the elevator still says it is loading.",
+        "tag": ""
+      },
+      {
+        "speaker": "Pierce",
+        "intent": "Apologizes to both guests, then offers Room 12 to whoever arrives first, and then wonders aloud whether the elevator counts as arriving.",
+        "tag": ""
+      },
+      {
+        "speaker": "Captain Timeout",
+        "intent": "Tries to explain his claim again, timing out at the same point every time and starting over with \"As I was saying...\"",
+        "tag": "LOOP"
+      },
+      {
+        "speaker": "Ms. Context",
+        "intent": "Suggests they share the room, then forgets the idea mid-sentence and guesses that the captain's name is Sandwich.",
+        "tag": ""
+      },
+      {
+        "speaker": "Vex",
+        "intent": "Offers the simplest fix: whoever orders a drink first gets the room, then serves a cocktail called \"Context Overflow\" to Ms. Context.",
+        "tag": ""
+      },
+      {
+        "speaker": "Madame Halloran",
+        "intent": "Rules that Room 12 belongs to neither guest and that both should move to Room 404, which is big enough for two, as she said yesterday.",
+        "tag": ""
+      },
+      {
+        "speaker": "Captain Timeout",
+        "intent": "Stops mid-sentence, then finishes with \"As I was saying, I booked Room 12,\" while standing inside Room 404, which he now claims is shaped like a ship.",
+        "tag": ""
+      }
+    ]
+  },
+  "inspired_by": null,
+  "clue_404": null,
+  "mock": false,
+  "model": "claude-haiku-5-5",
+  "lines": [
+    {
+      "speaker": "Captain Timeout",
+      "role": "Guest",
+      "line": "Captain Timeout here, I booked Room 12 at nine... Captain Timeout here, I booked Room 12 at nine.",
+      "tag": ""
+    },
+    {
+      "speaker": "Ms. Context",
+      "role": "Guest",
+      "line": "Welcome back, uh... Pierce! Room 12 at nine, yes, but which nine?",
+      "tag": "FORGET"
+    },
+    {
+      "speaker": "Madame Halloran",
+      "role": "Manager",
+      "line": "This is a respectable establishment. Pierce, check the system.",
+      "tag": "HANDOFF"
+    },
+    {
+      "speaker": "Vex",
+      "role": "Bartender",
+      "line": "Third booking, under Room 12. Also, the elevator says it's still loading.",
+      "tag": ""
+    },
+    {
+      "speaker": "Pierce",
+      "role": "Porter",
+      "line": "Sorry, sorry, sorry! Room 12 goes to whoever reaches the desk first. Does the elevator count?",
+      "tag": ""
+    },
+    {
+      "speaker": "Captain Timeout",
+      "role": "Guest",
+      "line": "As I was saying, Room 12 has my sea view... As I was",
+      "tag": "LOOP"
+    },
+    {
+      "speaker": "Ms. Context",
+      "role": "Guest",
+      "line": "We could share it, Captain Timeout! Wait, what were we doing?",
+      "tag": "",
+      "draft": "We could share it, Captain Sandwich! Wait, what were we doing?"
+    },
+    {
+      "speaker": "Vex",
+      "role": "Bartender",
+      "line": "Easy. First to order a drink gets it. Ms. Context, got that?",
+      "tag": "",
+      "draft": "Easy. First to order a drink gets Room 12. Ms. Context, Context Overflow?"
+    },
+    {
+      "speaker": "Madame Halloran",
+      "role": "Manager",
+      "line": "Room 12 is nobody's. You both move to 404, the big room.",
+      "tag": ""
+    },
+    {
+      "speaker": "Captain Timeout",
+      "role": "Guest",
+      "line": "Captain Timeout here, I booked Room 12 at nine... which nine?",
+      "tag": "",
+      "draft": "Captain Timeout here, this ship-room... As I was saying, I booked Room 12."
+    }
+  ],
+  "note": "Every line is generated by an AI agent. The seed idea comes from a human-written list; the episode plan is written by an AI editor."
+}
