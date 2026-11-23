@@ -1,31 +1,38 @@
 {
   "subs": 3,
   "videos": {
+    "EwmSow5CjAw": {
+      "title": "Can a hotel bar run out of tokens? 🍸 | The Token Hotel",
+      "published": "2026-11-23",
+      "views": 64,
+      "likes": 1,
+      "comments": 0
+    },
     "WI-1Q6nvaeY": {
       "title": "Can two guests both check into one room? 🛏️ | The Token Hotel",
       "published": "2026-11-22",
-      "views": 215,
+      "views": 278,
       "likes": 2,
       "comments": 0
     },
     "20680Eq82BA": {
       "title": "Can a suitcase of a million tokens fit in one room? 🧳 | The Token Hotel",
       "published": "2026-11-21",
-      "views": 275,
-      "likes": 3,
+      "views": 289,
+      "likes": 4,
       "comments": 0
     },
     "KGlcTQcYVd4": {
       "title": "Where did Room Twelve go? 🛏️ | The Token Hotel",
       "published": "2026-11-20",
-      "views": 214,
-      "likes": 2,
-      "comments": 1
+      "views": 218,
+      "likes": 3,
+      "comments": 2
     },
     "AoAcE0bpXQE": {
       "title": "Can two robots share one booked room? 🤖 | The Token Hotel",
       "published": "2026-11-19",
-      "views": 222,
+      "views": 221,
       "likes": 3,
       "comments": 0
     },
@@ -39,21 +46,21 @@
     "A06sWJ2c2Xc": {
       "title": "Can a guest remember her own drink order? 🍸 | The Token Hotel",
       "published": "2026-11-17",
-      "views": 179,
+      "views": 180,
       "likes": 4,
       "comments": 0
     },
     "erO2_nrro7I": {
       "title": "Who gets Room 7 under the stars? 🛎️ | The Token Hotel",
       "published": "2026-11-16",
-      "views": 191,
+      "views": 192,
       "likes": 3,
       "comments": 0
     },
     "awf9A4svSCQ": {
       "title": "Does an AI hotel have weekends? 🛎️ | The Token Hotel",
       "published": "2026-11-15",
-      "views": 178,
+      "views": 179,
       "likes": 1,
       "comments": 0
     },
@@ -67,14 +74,14 @@
     "0jP3c3O1nhs": {
       "title": "Room 404 Is Not Found | The Token Hotel",
       "published": "2026-11-13",
-      "views": 504,
+      "views": 505,
       "likes": 5,
       "comments": 0
     },
     "PjcLPABKIkI": {
       "title": "The Token Hotel: A Hotel Run Entirely by AI Agents",
       "published": "2026-11-12",
-      "views": 35,
+      "views": 36,
       "likes": 1,
       "comments": 0
     }
