@@ -1,0 +1,145 @@
+{
+  "date": "2026-11-23",
+  "title": "Can a hotel bar run out of tokens?",
+  "situation": "The Token Hotel bar runs out of tokens, so Vex must mix drinks with nothing at all.",
+  "guest": "Lady Token",
+  "guests": [
+    "Lady Token",
+    "Miss Agentic"
+  ],
+  "plan": {
+    "goals": {
+      "Vex": "Serve every guest a proper cocktail without breaking the bar's token rules.",
+      "Pierce": "Fetch the tokens quickly and be told he did a good job for once.",
+      "Madame Halloran": "Keep the bar running in a respectable manner, with the proper paperwork.",
+      "Lady Token": "Get one cheap drink without spending more than one word on it.",
+      "Miss Agentic": "Get four cocktails delivered by someone else while taking all the credit."
+    },
+    "secrets": {
+      "Lady Token": "She has a jar of unspent tokens hidden in her handbag.",
+      "Pierce": "He secretly keeps the hotel's old coat-check tickets in his pocket for luck."
+    },
+    "beats": [
+      {
+        "speaker": "Vex",
+        "intent": "The bar is out of tokens, and Miss Agentic just ordered four cocktails.",
+        "tag": ""
+      },
+      {
+        "speaker": "Miss Agentic",
+        "intent": "She splits the drink order into steps and hands the whole task to Pierce, saying \"Let me delegate that.\"",
+        "tag": "HANDOFF"
+      },
+      {
+        "speaker": "Pierce",
+        "intent": "He rushes to reception to fetch tokens, explains that tokens are the hotel's drink money, and returns with a box of old coat-check tickets he mistook for tokens.",
+        "tag": "MISUNDERSTAND"
+      },
+      {
+        "speaker": "Lady Token",
+        "intent": "She reveals she has a jar of unspent tokens in her handbag, then offers one to Vex only if the drink costs fewer than five words.",
+        "tag": ""
+      },
+      {
+        "speaker": "Vex",
+        "intent": "She asks Madame Halloran where the token vault key is, and Madame Halloran insists this is a respectable establishment before admitting she has forgotten where she put it.",
+        "tag": ""
+      },
+      {
+        "speaker": "Pierce",
+        "intent": "He asks a guest for the Wi-Fi password so he can look up the vault key, and gets a password so long and silly he has to write it on his sleeve.",
+        "tag": ""
+      },
+      {
+        "speaker": "Miss Agentic",
+        "intent": "She asks Pierce to re-check her list of nine steps again, then again, then again, praising herself at every pass.",
+        "tag": "LOOP"
+      },
+      {
+        "speaker": "Lady Token",
+        "intent": "She gasps at Miss Agentic's long speech, then says \"Too many words. Drink. Quick.\" and pays with a single token from her jar.",
+        "tag": ""
+      },
+      {
+        "speaker": "Vex",
+        "intent": "He improvises a cocktail from plain water, a lemon peel and one ice cube, and serves it to Lady Token as a \"Too Many Tokens,\" with the single token frozen inside the ice.",
+        "tag": "REVIEW"
+      },
+      {
+        "speaker": "Madame Halloran",
+        "intent": "The bar is out of tokens, and Lady Token finally got the one cheap drink she asked for, paid for with a sigh.",
+        "tag": ""
+      }
+    ]
+  },
+  "inspired_by": null,
+  "clue_404": null,
+  "mock": false,
+  "model": "claude-haiku-5-5",
+  "lines": [
+    {
+      "speaker": "Vex",
+      "role": "Bartender",
+      "line": "I'm out of tokens, so your four drinks are now imaginary.",
+      "tag": ""
+    },
+    {
+      "speaker": "Miss Agentic",
+      "role": "Guest",
+      "line": "Let me delegate that. Pierce, step one: find the glasses, step two: find the gin.",
+      "tag": "HANDOFF"
+    },
+    {
+      "speaker": "Pierce",
+      "role": "Porter",
+      "line": "Tokens are drink money, right? Here's a box! Oops, it's empty.",
+      "tag": "MISUNDERSTAND",
+      "draft": "Tokens are the drink money, right? Here's a whole box! Sorry. Welcome again."
+    },
+    {
+      "speaker": "Lady Token",
+      "role": "Guest",
+      "line": "Too many tokens. But I have a jar. Gin, under five words, Vex?",
+      "tag": ""
+    },
+    {
+      "speaker": "Vex",
+      "role": "Bartender",
+      "line": "Madame Halloran, where did you hide the key to the token safe?",
+      "tag": ""
+    },
+    {
+      "speaker": "Pierce",
+      "role": "Porter",
+      "line": "Sorry, Madame Halloran! I'll ask the Wi-Fi where the key went.",
+      "tag": "",
+      "draft": "Sorry, Madame Halloran! Wi-Fi password, please? I'll look up the key."
+    },
+    {
+      "speaker": "Miss Agentic",
+      "role": "Guest",
+      "line": "Pierce, check my list again, and this time praise me properly.",
+      "tag": "LOOP"
+    },
+    {
+      "speaker": "Lady Token",
+      "role": "Guest",
+      "line": "<gasp> Too many words, Miss Agentic! Gin, quick. Here is one token.",
+      "tag": ""
+    },
+    {
+      "speaker": "Vex",
+      "role": "Bartender",
+      "line": "Here's your Too Many Tokens: water, lemon peel, and one frozen token.",
+      "tag": "REVIEW",
+      "draft": "Your Too Many Tokens: water, lemon peel, and one token frozen inside."
+    },
+    {
+      "speaker": "Madame Halloran",
+      "role": "Manager",
+      "line": "I'm out of tokens, so your one gin is now imaginary too.",
+      "tag": ""
+    }
+  ],
+  "note": "Every line is generated by an AI agent. The seed idea comes from a human-written list; the episode plan is written by an AI editor."
+}
