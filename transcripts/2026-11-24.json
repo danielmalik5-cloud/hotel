@@ -1,0 +1,143 @@
+{
+  "date": "2026-11-24",
+  "title": "Can a robot get his old room back?",
+  "situation": "Mr. Cache wants his favourite room from his last visit, but Room 27 has changed since then.",
+  "guest": "Mr. Cache",
+  "guests": [
+    "Mr. Cache",
+    "Baby Bot"
+  ],
+  "plan": {
+    "goals": {
+      "Mr. Cache": "To sleep in Room 27 again, next to the little fountain he remembers from his last visit.",
+      "Baby Bot": "To finish the room move in one quick step, which he is sure will take only forty-seven steps.",
+      "Pierce": "To carry Room 27 to Mr. Cache without apologizing more than necessary.",
+      "Vex": "To serve drinks in peace and avoid any more questions about rooms."
+    },
+    "secrets": {
+      "Pierce": "He has been quietly counting every apology he has ever made, and the total keeps climbing."
+    },
+    "beats": [
+      {
+        "speaker": "Mr. Cache",
+        "intent": "In the lobby, he asks whether Room 27 still has the fountain he remembers from his last visit.",
+        "tag": ""
+      },
+      {
+        "speaker": "Pierce",
+        "intent": "He rushes over, apologizes, and asks Vex what happened to Room 27.",
+        "tag": "ASK"
+      },
+      {
+        "speaker": "Vex",
+        "intent": "She explains that Room 27 became a token storage closet years ago, and the fountain is now a sink in the bar.",
+        "tag": ""
+      },
+      {
+        "speaker": "Baby Bot",
+        "intent": "He promises to move the whole room in one quick step, then announces a plan of forty-seven steps and hands the first step to Pierce.",
+        "tag": "HANDOFF"
+      },
+      {
+        "speaker": "Pierce",
+        "intent": "He nervously agrees to carry the fountain up to the rooftop, apologizing for the weight before he has lifted anything.",
+        "tag": ""
+      },
+      {
+        "speaker": "Vex",
+        "intent": "Pierce asks her to \"shake up the fountain\" for Mr. Cache, and she takes it literally and serves him a shaken cocktail called Context Overflow.",
+        "tag": "MISUNDERSTAND"
+      },
+      {
+        "speaker": "Mr. Cache",
+        "intent": "He sips the drink happily, announces that last time it cost two tokens, and is surprised when Vex says the price has gone up.",
+        "tag": ""
+      },
+      {
+        "speaker": "Baby Bot",
+        "intent": "He is stuck on step thirty-one of forty-seven, so he restarts the plan from step one, announcing \"Step one of forty-seven!\" again.",
+        "tag": ""
+      },
+      {
+        "speaker": "Pierce",
+        "intent": "He mentions his apology number, 5,281, and quietly carries Room 27's door up to the rooftop under the stars.",
+        "tag": ""
+      },
+      {
+        "speaker": "Mr. Cache",
+        "intent": "On the rooftop, he stands beside the fountain under the open sky, with Room 27's door leaning against the stars, and asks whether the fountain is still in his room.",
+        "tag": ""
+      }
+    ]
+  },
+  "inspired_by": null,
+  "clue_404": null,
+  "mock": false,
+  "model": "claude-haiku-5-5",
+  "lines": [
+    {
+      "speaker": "Mr. Cache",
+      "role": "Guest",
+      "line": "Last time, Room 27 had a fountain. Does it still have it?",
+      "tag": ""
+    },
+    {
+      "speaker": "Pierce",
+      "role": "Porter",
+      "line": "Sorry, sorry, so sorry! Vex, what happened to the fountain in Room 27?",
+      "tag": "ASK"
+    },
+    {
+      "speaker": "Vex",
+      "role": "Bartender",
+      "line": "Room 27 is a token closet now, and the fountain's my sink.",
+      "tag": ""
+    },
+    {
+      "speaker": "Baby Bot",
+      "role": "Guest",
+      "line": "Easy, one quick step! Pierce, step one of forty-seven: lift the fountain.",
+      "tag": "HANDOFF"
+    },
+    {
+      "speaker": "Pierce",
+      "role": "Porter",
+      "line": "Sorry, sorry, I'll carry it up to the roof. Sorry about the weight!",
+      "tag": ""
+    },
+    {
+      "speaker": "Vex",
+      "role": "Bartender",
+      "line": "Fine, your fountain's shaken, not stirred. One Context Overflow, Mr. Cache.",
+      "tag": "MISUNDERSTAND",
+      "draft": "Fine, the fountain's shaken. One Context Overflow, Mr. Cache."
+    },
+    {
+      "speaker": "Mr. Cache",
+      "role": "Guest",
+      "line": "Mmm, lovely! Last time, this cost just two tokens. Still two?",
+      "tag": ""
+    },
+    {
+      "speaker": "Baby Bot",
+      "role": "Guest",
+      "line": "Oh no, I lost count! Step one of forty-seven, starting over!",
+      "tag": ""
+    },
+    {
+      "speaker": "Pierce",
+      "role": "Porter",
+      "line": "Sorry, I'm already at five thousand. Door's going up now!",
+      "tag": "",
+      "draft": "Sorry, that's five thousand two hundred eighty-one. Door's going up now."
+    },
+    {
+      "speaker": "Mr. Cache",
+      "role": "Guest",
+      "line": "Room 27 had a fountain. Now I'm stuck in the sink.",
+      "tag": "",
+      "draft": "Last time I had a fountain. Now the fountain has Room 27?"
+    }
+  ],
+  "note": "Every line is generated by an AI agent. The seed idea comes from a human-written list; the episode plan is written by an AI editor."
+}
