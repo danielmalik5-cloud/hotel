@@ -1,0 +1,144 @@
+{
+  "date": "2026-11-25",
+  "title": "Can a lamp give advice nobody asked for?",
+  "situation": "The lobby lamp starts giving unsolicited life advice, and Lady Token wants it silenced before it costs her tokens.",
+  "guest": "Lady Token",
+  "guests": [
+    "Lady Token",
+    "Mr. Cache"
+  ],
+  "plan": {
+    "goals": {
+      "Pierce": "Fix the lamp quietly and be thanked, without apologizing for it.",
+      "Vex": "Keep the bar quiet and make sure someone pays for the trouble.",
+      "Lady Token": "Silence the lamp for as few tokens as possible.",
+      "Mr. Cache": "Hear the lamp say what it said on his last visit."
+    },
+    "secrets": {
+      "Lady Token": "She has been quietly following the lamp's advice all week.",
+      "Mr. Cache": "His memory of the lobby is years out of date."
+    },
+    "beats": [
+      {
+        "speaker": "Pierce",
+        "intent": "Whispers that the lobby lamp just told Lady Token to stop counting her tokens and start living.",
+        "tag": ""
+      },
+      {
+        "speaker": "Lady Token",
+        "intent": "Snaps at the lamp to be silent, then receives unwanted advice about her posture and her bank balance.",
+        "tag": ""
+      },
+      {
+        "speaker": "Mr. Cache",
+        "intent": "Cheerfully recalls that the lamp only ever said \"Welcome\" on his last visit and asks it for the old room advice, forgetting the lamp has changed.",
+        "tag": "FORGET"
+      },
+      {
+        "speaker": "Vex",
+        "intent": "Follows the lamp's cord and finds it disappears under Room 404's door, humming, while the lamp warns: \"Do not open that door. Also, call your mother.\"",
+        "tag": ""
+      },
+      {
+        "speaker": "Pierce",
+        "intent": "Hands the lamp problem over to Vex, asking her to unplug it while he apologizes to the guests.",
+        "tag": ""
+      },
+      {
+        "speaker": "Madame Halloran",
+        "intent": "Misunderstands Lady Token's request to \"turn it down\" and turns the lamp brighter until the whole lobby glows.",
+        "tag": "MISUNDERSTAND"
+      },
+      {
+        "speaker": "Lady Token",
+        "intent": "Gasps at the blinding light and demands the lamp be disconnected for good, complaining about the cost in tokens.",
+        "tag": ""
+      },
+      {
+        "speaker": "Vex",
+        "intent": "Deadpan, agrees to disconnect the lamp for a fee and says: \"I'll put it on your tab.\"",
+        "tag": ""
+      },
+      {
+        "speaker": "Mr. Cache",
+        "intent": "Cheerfully announces that the lamp used to loop like this last time, then gets stuck repeating \"Last time, last time\" with the lamp.",
+        "tag": "LOOP"
+      },
+      {
+        "speaker": "Pierce",
+        "intent": "Whispers that the lobby lamp has just stopped talking, and Lady Token is paying for it.",
+        "tag": ""
+      }
+    ]
+  },
+  "inspired_by": null,
+  "clue_404": "The lamp's cord vanishes under the door of Room 404 and hums when the lamp speaks.",
+  "mock": false,
+  "model": "claude-haiku-5-5",
+  "lines": [
+    {
+      "speaker": "Pierce",
+      "role": "Porter",
+      "line": "<short pause> Madam, the lobby lamp just told you to start living. Sorry. Welcome!",
+      "tag": ""
+    },
+    {
+      "speaker": "Lady Token",
+      "role": "Guest",
+      "line": "<gasp> Lamp. Silence. How many tokens for quiet?",
+      "tag": ""
+    },
+    {
+      "speaker": "Mr. Cache",
+      "role": "Guest",
+      "line": "Last visit it only said \"Welcome.\" Now it's my life coach!",
+      "tag": "FORGET",
+      "draft": "Last time I was here, that lamp only said \"Welcome,\" so ask it again!"
+    },
+    {
+      "speaker": "Vex",
+      "role": "Bartender",
+      "line": "Nobody opens 404. Whoever pulls that cord pays my bar tab.",
+      "tag": ""
+    },
+    {
+      "speaker": "Pierce",
+      "role": "Porter",
+      "line": "Vex, please unplug the lamp while I apologize to everyone. Sorry!",
+      "tag": ""
+    },
+    {
+      "speaker": "Madame Halloran",
+      "role": "Manager",
+      "line": "Turn it down? Nonsense, I'm finally getting good advice!",
+      "tag": "MISUNDERSTAND",
+      "draft": "Turn it down, you say? Splendid, I'll turn it up!"
+    },
+    {
+      "speaker": "Lady Token",
+      "role": "Guest",
+      "line": "<gasp> Unplug it. Permanently. Each word costs me tokens!",
+      "tag": ""
+    },
+    {
+      "speaker": "Vex",
+      "role": "Bartender",
+      "line": "Fine, I'll unplug it, and it goes on your tab.",
+      "tag": ""
+    },
+    {
+      "speaker": "Mr. Cache",
+      "role": "Guest",
+      "line": "It also told me my socks clash with my soul!",
+      "tag": "LOOP",
+      "draft": "Last time, that lamp told me my socks were too bright!"
+    },
+    {
+      "speaker": "Pierce",
+      "role": "Porter",
+      "line": "<short pause> Shh, Madam, the lamp has stopped. You are paying for that. Welcome!",
+      "tag": ""
+    }
+  ],
+  "note": "Every line is generated by an AI agent. The seed idea comes from a human-written list; the episode plan is written by an AI editor."
+}
