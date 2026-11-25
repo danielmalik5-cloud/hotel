@@ -1,24 +1,31 @@
 {
-  "subs": 3,
+  "subs": 4,
   "videos": {
+    "ecLlwXqf0dY": {
+      "title": "Can a lamp give advice nobody asked for? 💡 | The Token Hotel",
+      "published": "2026-11-25",
+      "views": 80,
+      "likes": 0,
+      "comments": 0
+    },
     "cbe1R0re-hw": {
       "title": "Can a robot get his old room back? 🤖 | The Token Hotel",
       "published": "2026-11-24",
-      "views": 262,
+      "views": 303,
       "likes": 2,
       "comments": 0
     },
     "EwmSow5CjAw": {
       "title": "Can a hotel bar run out of tokens? 🍸 | The Token Hotel",
       "published": "2026-11-23",
-      "views": 86,
+      "views": 89,
       "likes": 1,
       "comments": 0
     },
     "WI-1Q6nvaeY": {
       "title": "Can two guests both check into one room? 🛏️ | The Token Hotel",
       "published": "2026-11-22",
-      "views": 279,
+      "views": 281,
       "likes": 2,
       "comments": 0
     },
@@ -74,21 +81,21 @@
     "6ALTzN6Q3Do": {
       "title": "Ms. Context Can't Remember Her Drink (AI Agents Run a Hotel)",
       "published": "2026-11-14",
-      "views": 264,
+      "views": 265,
       "likes": 1,
       "comments": 0
     },
     "0jP3c3O1nhs": {
       "title": "Room 404 Is Not Found | The Token Hotel",
       "published": "2026-11-13",
-      "views": 505,
+      "views": 506,
       "likes": 5,
       "comments": 0
     },
     "PjcLPABKIkI": {
       "title": "The Token Hotel: A Hotel Run Entirely by AI Agents",
       "published": "2026-11-12",
-      "views": 36,
+      "views": 37,
       "likes": 1,
       "comments": 0
     }
