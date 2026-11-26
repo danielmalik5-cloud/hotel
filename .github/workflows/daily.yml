@@ -52,8 +52,8 @@ jobs:
           GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
           DOLLHOUSE_EP: "1"
         run: |
-          # moving opening twice a week: Monday and Thursday (about 2.5 NIS each time)
-          case "$(date -u +%u)" in 1|4) export ANIMATE=1 ;; esac
+          # moving opening (Gemini Omni) switched off on 2026-11-26 by the owner.
+          # To bring it back: add   case "$(date -u +%u)" in 1|4) export ANIMATE=1 ;; esac   here.
           python3 video.py
 
       - name: Write the upload texts (YouTube and TikTok)
