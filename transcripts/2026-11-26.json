@@ -1,0 +1,144 @@
+{
+  "date": "2026-11-26",
+  "title": "Can a guest forget his own drink order?",
+  "situation": "Sir Hallucinate forgets his order ten seconds after making it, and the bar must find a way to keep it.",
+  "guest": "Sir Hallucinate",
+  "guests": [
+    "Sir Hallucinate",
+    "Lady Token"
+  ],
+  "plan": {
+    "goals": {
+      "Sir Hallucinate": "Wants his order remembered, and never admits he has forgotten anything.",
+      "Lady Token": "Wants him to order once, in one short sentence, so no tokens are wasted.",
+      "Vex": "Wants the bar to stay quiet and nobody to ask her to remember anything.",
+      "Pierce": "Wants to fix the mess without apologizing for it more than necessary.",
+      "Madame Halloran": "Wants the bar to run in an orderly way, with every order kept."
+    },
+    "secrets": {
+      "Sir Hallucinate": "He has no memory of ordering at all and invents answers to hide it."
+    },
+    "beats": [
+      {
+        "speaker": "Sir Hallucinate",
+        "intent": "At the bar, he asks Vex what he ordered, having forgotten it ten seconds after saying it.",
+        "tag": "FORGET"
+      },
+      {
+        "speaker": "Vex",
+        "intent": "She reminds him he ordered a Context Overflow and has already drunk half of it, which he denies.",
+        "tag": ""
+      },
+      {
+        "speaker": "Lady Token",
+        "intent": "She snaps that his wasted words cost tokens and tells him to order once, in one sentence.",
+        "tag": ""
+      },
+      {
+        "speaker": "Pierce",
+        "intent": "He rushes off to fetch a pen and returns with a crumpled note written in Sir Hallucinate's own handwriting, which says \"Do not serve the sour.\"",
+        "tag": ""
+      },
+      {
+        "speaker": "Sir Hallucinate",
+        "intent": "He reads the note, confidently claims a different robot wrote it, and says paper was invented in 1803.",
+        "tag": ""
+      },
+      {
+        "speaker": "Pierce",
+        "intent": "He hands the note and the job of remembering the order over to Vex, apologizing as he goes.",
+        "tag": "HANDOFF"
+      },
+      {
+        "speaker": "Vex",
+        "intent": "She misreads \"Do not serve the sour\" as \"Serve the lemon,\" and begins pouring lemon juice into a glass.",
+        "tag": "MISUNDERSTAND"
+      },
+      {
+        "speaker": "Madame Halloran",
+        "intent": "She strides in as Sir Hallucinate reorders the same lemon soufflé every ten seconds and the lobby fills with lemon soufflés, and she says \"This is a respectable establishment.\"",
+        "tag": ""
+      },
+      {
+        "speaker": "Lady Token",
+        "intent": "She gasps at the soufflé flood and says \"Too many tokens,\" then tells him to say his order just once.",
+        "tag": ""
+      },
+      {
+        "speaker": "Sir Hallucinate",
+        "intent": "Vex hands him a glass with his order printed on it, he reads it aloud, and says \"Everyone knows that.",
+        "tag": ""
+      }
+    ]
+  },
+  "inspired_by": null,
+  "clue_404": null,
+  "mock": false,
+  "model": "claude-haiku-5-5",
+  "lines": [
+    {
+      "speaker": "Sir Hallucinate",
+      "role": "Guest",
+      "line": "Vex, I ordered something splendid just now, remind me what it was.",
+      "tag": "FORGET"
+    },
+    {
+      "speaker": "Vex",
+      "role": "Bartender",
+      "line": "You ordered a Context Overflow, and you've already drunk half of it.",
+      "tag": ""
+    },
+    {
+      "speaker": "Lady Token",
+      "role": "Guest",
+      "line": "Too many tokens. Order once, in one sentence. Then stop talking.",
+      "tag": ""
+    },
+    {
+      "speaker": "Pierce",
+      "role": "Porter",
+      "line": "Sorry, sir! Your own handwriting says do not serve the sour.",
+      "tag": ""
+    },
+    {
+      "speaker": "Sir Hallucinate",
+      "role": "Guest",
+      "line": "That note isn't mine, Pierce. My handwriting is far too handsome.",
+      "tag": "",
+      "draft": "That note is not mine, Pierce. Paper was invented in 1803, everyone knows."
+    },
+    {
+      "speaker": "Pierce",
+      "role": "Porter",
+      "line": "Vex, you're holding his note. Read him his order, please.",
+      "tag": "HANDOFF",
+      "draft": "Sorry, Vex, you hold the note and remember his order."
+    },
+    {
+      "speaker": "Vex",
+      "role": "Bartender",
+      "line": "The note says serve the lemon, so lemon it is.",
+      "tag": "MISUNDERSTAND"
+    },
+    {
+      "speaker": "Madame Halloran",
+      "role": "Manager",
+      "line": "Lemon soufflés in my lobby again? This is a respectable establishment.",
+      "tag": ""
+    },
+    {
+      "speaker": "Lady Token",
+      "role": "Guest",
+      "line": "<gasp> Too many tokens! Sir, order once, in one sentence.",
+      "tag": ""
+    },
+    {
+      "speaker": "Sir Hallucinate",
+      "role": "Guest",
+      "line": "Vex, I ordered something splendid. Was it lemon? Lemon sounds splendid.",
+      "tag": "",
+      "draft": "Vex, I ordered something splendid, it says lemon, everyone knows that."
+    }
+  ],
+  "note": "Every line is generated by an AI agent. The seed idea comes from a human-written list; the episode plan is written by an AI editor."
+}
