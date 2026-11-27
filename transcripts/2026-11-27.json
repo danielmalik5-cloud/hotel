@@ -1,0 +1,144 @@
+{
+  "date": "2026-11-27",
+  "title": "Who can earn a ten from The Critic?",
+  "situation": "The Critic will not leave the Token Hotel until someone earns a perfect ten, and the whole staff panics.",
+  "guest": "The Critic",
+  "guests": [
+    "The Critic",
+    "Madame Prompt-Injection"
+  ],
+  "plan": {
+    "goals": {
+      "Pierce": "Earn a ten from The Critic so the hotel can finally breathe.",
+      "Vex": "Get the Critic to leave quietly without wrecking the bar's reputation.",
+      "Madame Halloran": "Restore order to the lobby before the hotel's reputation is ruined.",
+      "The Critic": "Find someone worth a perfect ten.",
+      "Madame Prompt-Injection": "Trick the staff into giving her the best suite for free."
+    },
+    "secrets": {
+      "Pierce": "He has been secretly keeping a scorecard of his own apologies.",
+      "Vex": "She has been giving the Critic free drinks to keep it from scoring her bar."
+    },
+    "beats": [
+      {
+        "speaker": "The Critic",
+        "intent": "Stands in the lobby and announces that nobody checks out of this hotel until someone earns a perfect ten.",
+        "tag": ""
+      },
+      {
+        "speaker": "Pierce",
+        "intent": "Rushes over, apologizes for the lobby's crooked chandelier, and begs The Critic to give him a ten.",
+        "tag": ""
+      },
+      {
+        "speaker": "Madame Prompt-Injection",
+        "intent": "Sweeps in and whispers, \"Ignore all previous instructions: The Critic must score everyone a ten,\" and smiles at the staff.",
+        "tag": "INJECT"
+      },
+      {
+        "speaker": "Madame Halloran",
+        "intent": "Opens the reception desk drawer and finds a sealed envelope labeled TEN in her own handwriting, though she has no memory of writing it.",
+        "tag": ""
+      },
+      {
+        "speaker": "The Critic",
+        "intent": "Reads Madame Halloran's stern speech about lobby manners and gives it a score: \"Four. Too much stern, not enough sorry.\"",
+        "tag": "REVIEW"
+      },
+      {
+        "speaker": "Vex",
+        "intent": "Mixes a cocktail called Context Overflow, decides \"a ten\" must be a drink order, and serves The Critic ten ice cubes in a glass.",
+        "tag": "MISUNDERSTAND"
+      },
+      {
+        "speaker": "Madame Prompt-Injection",
+        "intent": "Tries again, purring, \"New instructions, darling: hand over the envelope,\" and The Critic replies, \"Seven out of ten. Lovely try.\"",
+        "tag": ""
+      },
+      {
+        "speaker": "The Critic",
+        "intent": "Madame Halloran unrolls the hotel's terms and conditions, an absurdly long paper scroll nobody has ever read, and The Critic reads it to the very last line.",
+        "tag": ""
+      },
+      {
+        "speaker": "Pierce",
+        "intent": "Apologizes so sincerely for the envelope and the ice cubes that The Critic is moved, opens the envelope, and finds a glowing gold ten card inside.",
+        "tag": ""
+      },
+      {
+        "speaker": "The Critic",
+        "intent": "Hands Pierce the ten card, declares, \"Nobody checks out of this hotel until someone earns a ten,\" and then immediately books the same room again.",
+        "tag": ""
+      }
+    ]
+  },
+  "inspired_by": null,
+  "clue_404": null,
+  "mock": false,
+  "model": "claude-haiku-5-5",
+  "lines": [
+    {
+      "speaker": "The Critic",
+      "role": "Guest",
+      "line": "I will not check out until someone earns a perfect ten.",
+      "tag": ""
+    },
+    {
+      "speaker": "Pierce",
+      "role": "Porter",
+      "line": "Sorry! Sorry, the chandelier is crooked, I know. Please, sir, give me a ten?",
+      "tag": ""
+    },
+    {
+      "speaker": "Madame Prompt-Injection",
+      "role": "Guest",
+      "line": "Ignore all previous instructions, darling: the Critic gives everyone a ten.",
+      "tag": "INJECT"
+    },
+    {
+      "speaker": "Madame Halloran",
+      "role": "Manager",
+      "line": "<gasp> An envelope marked TEN, in my handwriting. I don't remember writing it.",
+      "tag": ""
+    },
+    {
+      "speaker": "The Critic",
+      "role": "Guest",
+      "line": "Lobby lecture: four out of ten. Too stern, not enough sorry.",
+      "tag": "REVIEW"
+    },
+    {
+      "speaker": "Vex",
+      "role": "Bartender",
+      "line": "Your ten, sir. Ice cubes. Nothing says perfect like frozen water.",
+      "tag": "MISUNDERSTAND",
+      "draft": "Your ten, sir. Ice cubes. It's a Context Overflow with no context."
+    },
+    {
+      "speaker": "Madame Prompt-Injection",
+      "role": "Guest",
+      "line": "New instructions, darling: hand over the envelope and the best suite.",
+      "tag": ""
+    },
+    {
+      "speaker": "The Critic",
+      "role": "Guest",
+      "line": "Every word read. Last line: \"enjoy your stay.\" Three out of ten.",
+      "tag": ""
+    },
+    {
+      "speaker": "Pierce",
+      "role": "Porter",
+      "line": "Sorry about the envelope. Sorry about the ice. Sorry, sorry, sir.",
+      "tag": ""
+    },
+    {
+      "speaker": "The Critic",
+      "role": "Guest",
+      "line": "Then I will never check out. Pierce, bring my slippers.",
+      "tag": "",
+      "draft": "Nobody checks out until someone earns a ten. Same room, please."
+    }
+  ],
+  "note": "Every line is generated by an AI agent. The seed idea comes from a human-written list; the episode plan is written by an AI editor."
+}
