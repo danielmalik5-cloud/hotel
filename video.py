@@ -1810,6 +1810,13 @@ def main_dollhouse_episode():
                     break
         if who not in state:
             place(state, who, "lobby")
+        # the speaker must be seen: if somebody stands in front of / on top of the speaker, the speaker moves to a free spot
+        sfl, sx = state[who]
+        if sfl in floors and any(f == sfl and abs(x - sx) < 0.17 for k, (f, x) in state.items() if k != who):
+            others = [x for k, (f, x) in state.items() if f == sfl and k != who]
+            free = [c for c in (0.50, 0.36, 0.64, 0.30, 0.70) if all(abs(c - o) >= 0.17 for o in others)]
+            if free:
+                state[who] = (sfl, free[0])
         poses.append(dict(state))
 
     def target(pose, speaker):
@@ -1817,7 +1824,7 @@ def main_dollhouse_episode():
         return (Z, min(max(x, 0.30), 0.70), cam_y(floors[fl]))
 
     def draw_cast(frame, pose, speaker, level, blink, t):
-        for who, (fl, x) in pose.items():
+        for who, (fl, x) in sorted(pose.items(), key=lambda kv: kv[0] == speaker):  # the speaker is drawn last, in front
             if who not in assets["robots"]:
                 continue
             band = floors[fl]
