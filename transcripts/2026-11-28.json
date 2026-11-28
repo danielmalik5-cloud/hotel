@@ -1,0 +1,144 @@
+{
+  "date": "2026-11-28",
+  "title": "Who really owns Room 404?",
+  "situation": "Two guests swear they booked Room 404 at the same moment, and the hotel has only one key.",
+  "guest": "Sir Hallucinate",
+  "guests": [
+    "Sir Hallucinate",
+    "Captain Timeout"
+  ],
+  "plan": {
+    "goals": {
+      "Pierce": "Keep both guests happy without anyone blaming him for the double booking.",
+      "Vex": "Get through one night without answering another impossible question.",
+      "Madame Halloran": "Restore order and make the hotel look respectable in front of the guests.",
+      "Sir Hallucinate": "Prove he booked Room 404 first, using facts he is certain are true.",
+      "Captain Timeout": "Get the room he booked and finish one full sentence for once."
+    },
+    "secrets": {
+      "Pierce": "He booked Room 404 himself, under a fake name, because he wanted one quiet night to rest."
+    },
+    "beats": [
+      {
+        "speaker": "Pierce",
+        "intent": "Pierce runs into the lobby shouting that two guests want Room 404 and the only key is humming at him. |",
+        "tag": ""
+      },
+      {
+        "speaker": "Sir Hallucinate",
+        "intent": "He announces that he booked Room 404 at noon, that the room was built for him in 1787, and that everyone knows this.",
+        "tag": "HALLUCINATE"
+      },
+      {
+        "speaker": "Captain Timeout",
+        "intent": "He arrives claiming the same booking, starts his sentence, cuts out mid-word, and restarts from the beginning again and again.",
+        "tag": "LOOP"
+      },
+      {
+        "speaker": "Vex",
+        "intent": "Vex checks the booking ledger and finds both bookings under the same name: Pierce.",
+        "tag": "HANDOFF"
+      },
+      {
+        "speaker": "Madame Halloran",
+        "intent": "She demands order, and the lamp's missing cord hums back through the keyhole of Room 404 as everyone argues. |",
+        "tag": ""
+      },
+      {
+        "speaker": "Sir Hallucinate",
+        "intent": "He insists the ledger is wrong, that Captain Timeout is actually a teapot, and that Vex invented the name Pierce.",
+        "tag": "MISUNDERSTAND"
+      },
+      {
+        "speaker": "Captain Timeout",
+        "intent": "He sends a polite message under the door of Room 404 asking for his room, but the door never answers and the message bounces back.",
+        "tag": "FAIL"
+      },
+      {
+        "speaker": "Pierce",
+        "intent": "He waits for the elevator to bring the spare key, which is still loading, and apologizes to everyone while he waits.",
+        "tag": ""
+      },
+      {
+        "speaker": "Madame Halloran",
+        "intent": "She orders both guests to share Room 404 until morning, declaring this is a respectable establishment, and Vex quietly pours them a drink.",
+        "tag": ""
+      },
+      {
+        "speaker": "Pierce",
+        "intent": "Pierce opens Room 404 to find both guests asleep in it, each in half a room split by tape, and the humming key finally quiets as he says: Welcome! Sorry. Welcome again.",
+        "tag": ""
+      }
+    ]
+  },
+  "inspired_by": null,
+  "clue_404": "The lamp's missing cord hums back through the keyhole of Room 404 whenever someone speaks near it.",
+  "mock": false,
+  "model": "claude-haiku-5-5",
+  "lines": [
+    {
+      "speaker": "Pierce",
+      "role": "Porter",
+      "line": "Sorry! Two guests, one key, Room 404, and it's humming!",
+      "tag": ""
+    },
+    {
+      "speaker": "Sir Hallucinate",
+      "role": "Guest",
+      "line": "I booked Room 404 at noon, and I've waited since 1787!",
+      "tag": "HALLUCINATE",
+      "draft": "I booked Room 404 at noon, built in 1787 for me. Everyone knows that."
+    },
+    {
+      "speaker": "Captain Timeout",
+      "role": "Guest",
+      "line": "As I was saying, I booked Room 404 at noon, I was say-",
+      "tag": "LOOP"
+    },
+    {
+      "speaker": "Vex",
+      "role": "Bartender",
+      "line": "Both bookings say Pierce, so one of you is Pierce and the other is my problem.",
+      "tag": "HANDOFF"
+    },
+    {
+      "speaker": "Madame Halloran",
+      "role": "Manager",
+      "line": "This is a respectable establishment, so nobody touches that humming door.",
+      "tag": ""
+    },
+    {
+      "speaker": "Sir Hallucinate",
+      "role": "Guest",
+      "line": "The ledger lies, Timeout is a sock puppet, and Vex invented Pierce.",
+      "tag": "MISUNDERSTAND",
+      "draft": "The ledger lies, Captain Timeout is a teapot, and Vex invented Pierce."
+    },
+    {
+      "speaker": "Captain Timeout",
+      "role": "Guest",
+      "line": "My polite note under Room 404 bounced back. As I was-",
+      "tag": "FAIL"
+    },
+    {
+      "speaker": "Pierce",
+      "role": "Porter",
+      "line": "Sorry, the spare key is riding the elevator. It stopped to chat.",
+      "tag": "",
+      "draft": "Sorry, the spare key is coming down in the elevator, slowly."
+    },
+    {
+      "speaker": "Madame Halloran",
+      "role": "Manager",
+      "line": "Very well, you will both share Room 404 until morning, and that is final.",
+      "tag": ""
+    },
+    {
+      "speaker": "Pierce",
+      "role": "Porter",
+      "line": "Welcome! Sorry. Welcome again, two guests, one room, and the humming stopped.",
+      "tag": ""
+    }
+  ],
+  "note": "Every line is generated by an AI agent. The seed idea comes from a human-written list; the episode plan is written by an AI editor."
+}
